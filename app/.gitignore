@@ -1,0 +1,4 @@
+/build
+*.iml
+manifest-merger-release-report.txt
+*.apk

@@ -174,6 +174,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         // to animate smoothly and have greater control over our views.
         mDraggableIcon = inflateButton(mRootView);
         mDraggableIcon.setOnTouchListener(this);
+        if (mDraggableIcon.getLayoutParams() == null) {
+            mDraggableIcon.setLayoutParams(new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT));
+        }
         mRootView.addView(mDraggableIcon);
         Point startingPosition = getStartingPosition();
         updateIconPosition(startingPosition.x, startingPosition.y);
@@ -690,6 +695,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     public void close(boolean returnToOrigin) {
+        close(returnToOrigin, false);
+    }
+
+    public void close(boolean returnToOrigin, boolean destroyView) {
         mRootView.setOnTouchListener(null);
         if (mIsViewOpen) {
             mIsViewOpen = false;
@@ -704,7 +713,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 });
                 mAnimationTask.run();
             }
-            hide();
+            hide(destroyView);
             if (mHomeKeyReceiver != null) {
                 getContext().unregisterReceiver(mHomeKeyReceiver);
                 mHomeKeyReceiver = null;
@@ -751,7 +760,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     public void onHide() {
     }
 
-    private void hide() {
+    private void hide(final boolean destroyView) {
         Log.v(TAG, "hide()");
         if (mView != null) {
             mView.setAlpha(1);
@@ -759,6 +768,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 @Override
                 public void onAnimationFinished() {
                     mView.setVisibility(View.GONE);
+                    if (destroyView) {
+                        Log.d(TAG, "View destroyed");
+                        mRootView.removeView(mView);
+                        mView = null;
+                    }
                 }
             });
 
@@ -803,7 +817,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        close();
+        close(true /* returnToOrigin */, true /* destroyView */);
     }
 
     private int getStatusBarHeight() {

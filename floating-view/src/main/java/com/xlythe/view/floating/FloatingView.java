@@ -13,6 +13,7 @@ import android.graphics.Point;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -84,6 +85,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     // Close logic
     private boolean mIsInDeleteMode = false;
+    private boolean mIsAnimatingToDeleteMode = false;
     private View mDeleteIcon;
     private View mDeleteIconHolder;
     private boolean mIsAnimationLocked = false;
@@ -250,7 +252,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 break;
             case MotionEvent.ACTION_UP:
                 mIsAnimationLocked = false;
-                if (mAnimationTask != null) mAnimationTask.cancel();
+                if (mAnimationTask != null) {
+                    mAnimationTask.cancel();
+                }
 
                 if (mDragged) {
                     // Animate the icon to one of the sides of the phone
@@ -293,9 +297,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                         mDeleteIconHolder.setTranslationX(mWiggle.x);
                         mDeleteIconHolder.setTranslationY(mWiggle.y);
                     }
-                    if (mIsInDeleteMode && isDeleteMode(x, y)) {
-                        mDraggableIcon.setTranslationX(getScreenWidth() / 2 - mDraggableIcon.getWidth() / 2 + mWiggle.x);
-                        mDraggableIcon.setTranslationY(mRootView.getHeight() - DELETE_BOX_HEIGHT / 2 - mDraggableIcon.getHeight() / 2 + mWiggle.y + MAGIC_OFFSET);
+                    if (mIsInDeleteMode && isDeleteMode(x, y) && !mIsAnimatingToDeleteMode) {
+                        Point point = calculatorIconPositionInDeleteMode();
+                        mDraggableIcon.setTranslationX(point.x);
+                        mDraggableIcon.setTranslationY(point.y);
                     }
                 }
                 if (isDeleteMode(x, y)) {
@@ -307,7 +312,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     });
                 } else if (isDeleteMode() && !mIsAnimationLocked) {
                     mIsInDeleteMode = false;
-                    if (mAnimationTask != null) mAnimationTask.cancel();
+                    if (mAnimationTask != null) {
+                        mAnimationTask.cancel();
+                    }
                     mAnimationTask = new AnimationTask(x, y);
                     mAnimationTask.setDuration(50);
                     mAnimationTask.setInterpolator(new LinearInterpolator());
@@ -330,7 +337,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                         mIsInDeleteMode = false;
                     }
                     if (!mIsAnimationLocked && mDragged) {
-                        if (mAnimationTask != null) mAnimationTask.cancel();
+                        if (mAnimationTask != null) {
+                            mAnimationTask.cancel();
+                        }
                         updateIconPosition(x, y);
                         mDontVibrate = false;
                     }
@@ -512,14 +521,42 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
     }
 
+    private Point calculatorIconPositionInDeleteMode() {
+        return new Point(mWiggle.x + getScreenWidth() / 2 - mDraggableIcon.getWidth() / 2,
+                mWiggle.y + mRootView.getHeight() - DELETE_BOX_HEIGHT / 2 - mDraggableIcon.getHeight() / 2 + MAGIC_OFFSET);
+    }
+
     private void animateToDeleteBoxCenter(final AnimationFinishedListener l) {
         if (mIsAnimationLocked || mWiggle == null || mRootView == null || mDraggableIcon == null)
             return;
         mIsInDeleteMode = true;
+        mIsAnimatingToDeleteMode = true;
         if (mAnimationTask != null) mAnimationTask.cancel();
-        mAnimationTask = new AnimationTask(mWiggle.x + getScreenWidth() / 2 - mDraggableIcon.getWidth() / 2, mWiggle.y + mRootView.getHeight() - DELETE_BOX_HEIGHT / 2 - mDraggableIcon.getHeight() / 2 + MAGIC_OFFSET);
+        final float initialX = mDraggableIcon.getTranslationX();
+        final float initialY = mDraggableIcon.getTranslationY();
+        mAnimationTask = new AnimationTask(new DynamicUpdate() {
+            @Override
+            public float getTranslationX(float percent) {
+                int destinationX = calculatorIconPositionInDeleteMode().x;
+                float delta = destinationX - initialX;
+                return initialX + (delta * percent);
+            }
+
+            @Override
+            public float getTranslationY(float percent) {
+                int destinationY = calculatorIconPositionInDeleteMode().y;
+                float delta = destinationY - initialY;
+                return initialY + (delta * percent);
+            }
+        });
         mAnimationTask.setDuration(150);
-        mAnimationTask.setAnimationFinishedListener(l);
+        mAnimationTask.setAnimationFinishedListener(new AnimationFinishedListener() {
+            @Override
+            public void onAnimationFinished() {
+                mIsAnimatingToDeleteMode = false;
+                l.onAnimationFinished();
+            }
+        });
         mAnimationTask.run();
         vibrate();
         mDeleteIcon.animate().scaleX(1.4f).scaleY(1.4f).setDuration(100);
@@ -744,6 +781,8 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         // Ultimate destination coordinates toward which the view will move
         private final int mDestX;
         private final int mDestY;
+        @Nullable
+        private final DynamicUpdate mDynamicUpdate;
         private long mDuration = 450;
         private float mTension = 1.4f;
         private Interpolator mInterpolator = new OvershootInterpolator(mTension);
@@ -754,6 +793,15 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
             mDestX = x;
             mDestY = y;
+            mDynamicUpdate = null;
+        }
+
+        AnimationTask(DynamicUpdate dynamicUpdate) {
+            if (mIsAnimationLocked)
+                throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
+            mDestX = -1;
+            mDestY = -1;
+            mDynamicUpdate = dynamicUpdate;
         }
 
         AnimationTask() {
@@ -761,6 +809,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
             mDestX = calculateX();
             mDestY = calculateY();
+            mDynamicUpdate = null;
 
             setAnimationFinishedListener(new AnimationFinishedListener() {
                 @Override
@@ -815,11 +864,37 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
 
         void run() {
-            mDraggableIcon.animate().translationX(mDestX).translationY(mDestY).setDuration(mDuration).setInterpolator(mInterpolator).setListener(mAnimationFinishedListener);
+            if (mDynamicUpdate == null) {
+                mDraggableIcon.animate()
+                        .translationX(mDestX)
+                        .translationY(mDestY)
+                        .setDuration(mDuration)
+                        .setInterpolator(mInterpolator)
+                        .setListener(mAnimationFinishedListener);
+            } else {
+                ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+                animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                    @Override
+                    public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                        float percent = valueAnimator.getAnimatedFraction();
+                        mDraggableIcon.setTranslationX(mDynamicUpdate.getTranslationX(percent));
+                        mDraggableIcon.setTranslationY(mDynamicUpdate.getTranslationY(percent));
+                    }
+                });
+                animator.setDuration(mDuration);
+                animator.setInterpolator(mInterpolator);
+                animator.addListener(mAnimationFinishedListener);
+                animator.start();
+            }
         }
 
         void cancel() {
             mDraggableIcon.animate().cancel();
         }
+    }
+
+    public interface DynamicUpdate {
+        float getTranslationX(float percent);
+        float getTranslationY(float percent);
     }
 }

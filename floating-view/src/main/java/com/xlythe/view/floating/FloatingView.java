@@ -2,6 +2,7 @@ package com.xlythe.view.floating;
 
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.app.Notification;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -40,6 +41,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     private static final int MARGIN_HORIZONTAL = -20;
     private static final int VIBRATION = 25;
     private static final int DELETE_ANIM_DURATION = 300;
+
+    private static final int NOTIFICATION_ID = 1;
+    public static final String ACTION_OPEN = "com.xlythe.view.floating.OPEN";
 
     private int CLOSE_ANIMATION_DISTANCE;
     private int DRAG_DELTA;
@@ -97,15 +101,28 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     @NonNull
     protected abstract View inflateView(@NonNull ViewGroup parent);
 
+    @NonNull
+    protected abstract Notification createNotification();
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (ACTION_OPEN.equals(intent.getAction())) {
+            open();
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @SuppressLint("RtlHardcoded")
     @Override
     public void onCreate() {
         super.onCreate();
+
+        startForeground(NOTIFICATION_ID, createNotification());
 
         // Load margins, distances, etc
         ViewConfiguration vc = ViewConfiguration.get(getContext());
@@ -592,6 +609,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     public void open() {
+        if (mRootView.getVisibility() == View.GONE) {
+            mRootView.setVisibility(View.VISIBLE);
+            mInactiveButton.setVisibility(View.INVISIBLE);
+        }
         if (!mIsViewOpen) {
             if (mIsAnimationLocked) return;
             mIsViewOpen = true;

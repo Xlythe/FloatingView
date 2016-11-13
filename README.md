@@ -1,6 +1,6 @@
 # FloatingView
 
-Quick and simple library for creating floating views and activities
+A library for creating floating views in Android
 
 License:
 

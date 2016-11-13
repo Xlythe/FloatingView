@@ -25,6 +25,7 @@ import android.view.View.OnTouchListener;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.OvershootInterpolator;
@@ -38,9 +39,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     private static final int MARGIN_VERTICAL = 5;
     private static final int MARGIN_HORIZONTAL = -20;
     private static final int VIBRATION = 25;
+    private static final int DELETE_ANIM_DURATION = 300;
 
     private int CLOSE_ANIMATION_DISTANCE;
-    private int CLOSE_OFFSET;
     private int DRAG_DELTA;
     private int STARTING_POINT_Y;
     private int DELETE_BOX_WIDTH;
@@ -78,9 +79,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     // Open/Close variables
     private boolean mIsViewOpen = false;
-    private Point mWiggle;
-    private boolean mAnimateWiggle = false;
-    private boolean mWiggleAnimating = false;
+    private Point mWiggle = new Point(0, 0);
     private boolean mEnableWiggle = false;
 
     // Close logic
@@ -112,7 +111,6 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         ViewConfiguration vc = ViewConfiguration.get(getContext());
         float density = getResources().getDisplayMetrics().density;
         CLOSE_ANIMATION_DISTANCE = (int) (250 * density);
-        CLOSE_OFFSET = (int) (2 * density);
         DRAG_DELTA = vc.getScaledTouchSlop();
         STARTING_POINT_Y = (int) (50 * density);
         DELETE_BOX_WIDTH = (int) getResources().getDimension(R.dimen.floating_window_delete_box_width);
@@ -269,7 +267,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 if (mIsInDeleteMode) {
                     stop(true);
                 } else {
-                    hideDeleteBox();
+                    hideDeleteBox(false);
                     mDraggableIcon.setScaleX(1f);
                     mDraggableIcon.setScaleY(1f);
                 }
@@ -280,20 +278,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 int y = (int) (event.getRawY() - mDraggableIcon.getHeight());
                 if (mDeleteIconHolder != null) {
                     calculateWiggle(x, y);
-                    if (!mEnableWiggle) {
-                        mEnableWiggle = true;
-                        mAnimateWiggle = true;
-                    }
-                    if (mAnimateWiggle) {
-                        mAnimateWiggle = false;
-                        mWiggleAnimating = true;
-                        mDeleteIconHolder.animate().translationX(mWiggle.x).translationY(mWiggle.y).setListener(new AnimationFinishedListener() {
-                            @Override
-                            public void onAnimationFinished() {
-                                mWiggleAnimating = false;
-                            }
-                        });
-                    } else if (!mWiggleAnimating) {
+                    if (mEnableWiggle) {
                         mDeleteIconHolder.setTranslationX(mWiggle.x);
                         mDeleteIconHolder.setTranslationY(mWiggle.y);
                     }
@@ -387,7 +372,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         boolean horz = x + (mDraggableIcon == null ? 0 : mDraggableIcon.getWidth()) > (screenWidth / 2 - boxWidth / 2) && x < (screenWidth / 2 + boxWidth / 2);
         boolean vert = y + (mDraggableIcon == null ? 0 : mDraggableIcon.getHeight()) > (screenHeight - boxHeight);
 
-        return horz && vert;
+        return mEnableWiggle && horz && vert;
     }
 
     private void showDeleteBox() {
@@ -407,33 +392,63 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 mDeleteView.setVisibility(View.VISIBLE);
             }
             mEnableWiggle = false;
-            mDeleteIconHolder.setTranslationX(0);
-            mDeleteIconHolder.setTranslationY(0);
             mDeleteBoxView.setAlpha(0);
             mDeleteBoxView.animate().alpha(1);
+            mDeleteIconHolder.setTranslationX(0);
             mDeleteIconHolder.setTranslationY(CLOSE_ANIMATION_DISTANCE);
-            mDeleteIconHolder.animate().translationYBy(-1 * (CLOSE_ANIMATION_DISTANCE + CLOSE_OFFSET)).setListener(new AnimationFinishedListener() {
+
+            ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                    float percent = valueAnimator.getAnimatedFraction();
+                    mDeleteIconHolder.setTranslationX(mWiggle.x * percent);
+
+                    int destinationY = mWiggle.y;
+                    float deltaY = destinationY - CLOSE_ANIMATION_DISTANCE;
+                    mDeleteIconHolder.setTranslationY(CLOSE_ANIMATION_DISTANCE + (deltaY * percent));
+                }
+            });
+            animator.addListener(new AnimationFinishedListener() {
                 @Override
                 public void onAnimationFinished() {
                     mEnableWiggle = true;
-                    mAnimateWiggle = true;
+
+                    if (isDeleteMode()) {
+                        if (!mIsInDeleteMode) animateToDeleteBoxCenter(new AnimationFinishedListener() {
+                            @Override
+                            public void onAnimationFinished() {
+                                mDontVibrate = true;
+                            }
+                        });
+                    }
                 }
             });
-            mDeleteBoxView.getLayoutParams().width = getScreenWidth();
+            animator.start();
         }
     }
 
-    public void hideDeleteBox() {
+    private void hideDeleteBox(boolean shrink) {
         if (mDeleteBoxVisible) {
             mDeleteBoxVisible = false;
             if (mDeleteView != null) {
-                mDeleteBoxView.animate().alpha(0);
-                mDeleteIconHolder.animate().translationYBy(CLOSE_ANIMATION_DISTANCE).setListener(new AnimationFinishedListener() {
-                    @Override
-                    public void onAnimationFinished() {
-                        if (mDeleteView != null) mDeleteView.setVisibility(View.GONE);
-                    }
-                });
+                mDeleteBoxView.animate()
+                        .alpha(0)
+                        .setDuration(DELETE_ANIM_DURATION);
+                mDeleteIconHolder.animate()
+                        .scaleX(shrink ? 0.3f : 1)
+                        .scaleY(shrink ? 0.3f : 1)
+                        .translationYBy(CLOSE_ANIMATION_DISTANCE)
+                        .setDuration(DELETE_ANIM_DURATION)
+                        .setInterpolator(new AccelerateInterpolator())
+                        .setListener(new AnimationFinishedListener() {
+                            @Override
+                            public void onAnimationFinished() {
+                                if (mDeleteView != null) {
+                                    mDeleteView.setVisibility(View.GONE);
+                                }
+                            }
+                        });
             }
         }
     }
@@ -506,14 +521,21 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             animateToDeleteBoxCenter(new AnimationFinishedListener() {
                 @Override
                 public void onAnimationFinished() {
-                    hideDeleteBox();
-                    mDeleteIconHolder.animate().scaleX(0.3f).scaleY(0.3f);
-                    mDraggableIcon.animate().scaleX(0.3f).scaleY(0.3f).translationYBy(CLOSE_ANIMATION_DISTANCE).setDuration(mDeleteIconHolder.animate().getDuration()).setInterpolator(new ValueAnimator().getInterpolator()).setListener(new AnimationFinishedListener() {
-                        @Override
-                        public void onAnimationFinished() {
-                            stopSelf();
-                        }
-                    });
+                    mDeleteIconHolder.setTranslationX(mWiggle.x);
+                    mDeleteIconHolder.setTranslationY(mWiggle.y);
+                    hideDeleteBox(true);
+                    mDraggableIcon.animate()
+                            .scaleX(0.3f)
+                            .scaleY(0.3f)
+                            .translationYBy(CLOSE_ANIMATION_DISTANCE)
+                            .setDuration(DELETE_ANIM_DURATION)
+                            .setInterpolator(new AccelerateInterpolator())
+                            .setListener(new AnimationFinishedListener() {
+                                @Override
+                                public void onAnimationFinished() {
+                                    stopSelf();
+                                }
+                            });
                 }
             });
         } else {
@@ -527,7 +549,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     private void animateToDeleteBoxCenter(final AnimationFinishedListener l) {
-        if (mIsAnimationLocked || mWiggle == null || mRootView == null || mDraggableIcon == null)
+        if (mIsAnimationLocked || mRootView == null || mDraggableIcon == null)
             return;
         mIsInDeleteMode = true;
         mIsAnimatingToDeleteMode = true;
@@ -796,7 +818,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mDynamicUpdate = null;
         }
 
-        AnimationTask(DynamicUpdate dynamicUpdate) {
+        AnimationTask(@NonNull DynamicUpdate dynamicUpdate) {
             if (mIsAnimationLocked)
                 throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
             mDestX = -1;

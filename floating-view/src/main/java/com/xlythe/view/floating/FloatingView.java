@@ -31,6 +31,7 @@ import android.widget.FrameLayout;
 
 public abstract class FloatingView extends Service implements OnTouchListener {
     private static final String TAG = "FloatingView";
+    private static final boolean DEBUG = false;
 
     private static final int MARGIN_VIEW = 20;
     private static final int MARGIN_VERTICAL = 5;
@@ -125,7 +126,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             public boolean dispatchKeyEvent(KeyEvent event) {
                 // We can only detect KEYCODE_BACK (but not KEYCODE_HOME). sad face :(
                 if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                    closeView();
+                    close();
                     return true;
                 }
                 return super.dispatchKeyEvent(event);
@@ -182,8 +183,14 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         registerReceiver(mBroadcastReceiver, filter);
 
         // We'll measure our icon now so that we can use it in various formulas later
-        mDraggableIcon.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        mRootView.measure(MeasureSpec.makeMeasureSpec(getScreenWidth(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(getScreenHeight(), MeasureSpec.EXACTLY));
         mIconSize = mDraggableIcon.getMeasuredWidth();
+
+        // While debugging, it's helpful to see the View bounds
+        if (DEBUG) {
+            mDraggableIcon.setBackgroundColor(0x30ff0000);
+            mInactiveButton.getChildAt(0).setBackgroundColor(0x30ff0000);
+        }
     }
 
     @Override
@@ -244,20 +251,19 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             case MotionEvent.ACTION_UP:
                 mIsAnimationLocked = false;
                 if (mAnimationTask != null) mAnimationTask.cancel();
-                if (!mDragged) {
-                    if (!mIsViewOpen) {
-                        openView();
-                    } else {
-                        closeView();
-                    }
-                } else {
-                    // Animate the icon
+
+                if (mDragged) {
+                    // Animate the icon to one of the sides of the phone
                     mAnimationTask = new AnimationTask();
                     mAnimationTask.run();
+                } else if (mIsViewOpen) {
+                    close();
+                } else {
+                    open();
                 }
 
                 if (mIsInDeleteMode) {
-                    close(true);
+                    stop(true);
                 } else {
                     hideDeleteBox();
                     mDraggableIcon.setScaleX(1f);
@@ -343,7 +349,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 deltaY = event.getRawY() - mOrigY;
                 mDragged = mDragged || Math.abs(deltaX) > DRAG_DELTA || Math.abs(deltaY) > DRAG_DELTA;
                 if (mDragged) {
-                    closeView(false);
+                    close(false);
                     showDeleteBox();
                 }
                 break;
@@ -425,6 +431,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     private void adjustInactivePosition() {
         if (mRootView == null) return;
+        if (DEBUG) {
+            Log.d(TAG, String.format("adjustInactivePosition() mCurrentPosX=%s, mCurrentPosY=%s screenWidth=%s, screenHeight=%s",
+                    mCurrentPosX, mCurrentPosY, getScreenWidth(), getScreenHeight()));
+        }
 
         mInactiveButton.setVisibility(View.VISIBLE);
         mRootView.postDelayed(new Runnable() {
@@ -435,27 +445,38 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 }
             }
         }, 30);
+
+        // Our icon is made up of two parts. The outer shell, which uses mInactiveParams to position
+        // itself within the phone screen's dimensions, and the inner shell, which uses translation
+        // to slightly adjust the icon when it's supposed to appear slightly cropped
         int x = mCurrentPosX;
         int y = mCurrentPosY;
-        View v = mInactiveButton.getChildAt(0);
-        v.setTranslationX(0);
+        View innerShell = mInactiveButton.getChildAt(0);
+        innerShell.setTranslationX(0);
+        innerShell.setTranslationY(0);
+
         if (x < 0) {
-            v.setTranslationX(x);
+            innerShell.setTranslationX(x);
             x = 0;
-        }
-        if (x > getScreenWidth() - mIconSize) {
-            v.setTranslationX(x - getScreenWidth() + mIconSize);
+        } else if (x > getScreenWidth() - mIconSize) {
+            innerShell.setTranslationX(x - getScreenWidth() + mIconSize);
             x = getScreenWidth() - mIconSize;
         }
-        v.setTranslationY(0);
-        if (y < 0) {
-            v.setTranslationY(y);
-            y = 0;
+        if (DEBUG) {
+            Log.d(TAG, "getTranslationX: " + innerShell.getTranslationX());
         }
-        if (y > getScreenHeight() - mIconSize) {
-            v.setTranslationY(y - getScreenHeight() + mIconSize);
+
+        if (y < 0) {
+            innerShell.setTranslationY(y);
+            y = 0;
+        } else if (y > getScreenHeight() - mIconSize) {
+            innerShell.setTranslationY(y - getScreenHeight() + mIconSize);
             y = getScreenHeight() - mIconSize;
         }
+        if (DEBUG) {
+            Log.d(TAG, "getTranslationY: " + innerShell.getTranslationY());
+        }
+
         mInactiveParams.x = x;
         mInactiveParams.y = y;
         if (!mIsDestroyed) mWindowManager.updateViewLayout(mInactiveButton, mInactiveParams);
@@ -468,7 +489,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         vi.vibrate(VIBRATION);
     }
 
-    private void close(boolean animate) {
+    private void stop(boolean animate) {
         if (mIsBeingDestroyed) return;
         mIsBeingDestroyed = true;
 
@@ -511,7 +532,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         mWiggle = new Point(wiggleX, wiggleY);
     }
 
-    public void openView() {
+    public void open() {
         if (!mIsViewOpen) {
             if (mIsAnimationLocked) return;
             mIsViewOpen = true;
@@ -527,7 +548,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mRootView.setOnTouchListener(new OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    closeView();
+                    close();
                     return true;
                 }
             });
@@ -536,7 +557,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mHomeKeyReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
-                    closeView();
+                    close();
                 }
             };
             getContext().registerReceiver(mHomeKeyReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
@@ -584,11 +605,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         return getResources().getDisplayMetrics().density;
     }
 
-    public void closeView() {
-        closeView(true);
+    public void close() {
+        close(true);
     }
 
-    public void closeView(boolean returnToOrigin) {
+    public void close(boolean returnToOrigin) {
         mRootView.setOnTouchListener(null);
         if (mIsViewOpen) {
             mIsViewOpen = false;
@@ -616,6 +637,12 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         Log.v(TAG, "show()");
         if (mView == null) {
             mView = inflateView(mRootView);
+            mView.setOnTouchListener(new OnTouchListener() {
+                @Override
+                public boolean onTouch(View view, MotionEvent motionEvent) {
+                    return true;
+                }
+            });
             FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) mView.getLayoutParams();
             params.leftMargin = getMargin();
             params.rightMargin = getMargin();
@@ -696,7 +723,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        closeView();
+        close();
     }
 
     private int getStatusBarHeight() {
@@ -715,19 +742,26 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     // Timer for animation/automatic movement of the tray.
     private class AnimationTask {
         // Ultimate destination coordinates toward which the view will move
-        int mDestX;
-        int mDestY;
-        long mDuration = 450;
-        float mTension = 1.4f;
-        Interpolator mInterpolator = new OvershootInterpolator(mTension);
-        AnimationFinishedListener mAnimationFinishedListener;
+        private final int mDestX;
+        private final int mDestY;
+        private long mDuration = 450;
+        private float mTension = 1.4f;
+        private Interpolator mInterpolator = new OvershootInterpolator(mTension);
+        private AnimationFinishedListener mAnimationFinishedListener;
 
         AnimationTask(int x, int y) {
-            setup(x, y);
+            if (mIsAnimationLocked)
+                throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
+            mDestX = x;
+            mDestY = y;
         }
 
         AnimationTask() {
-            setup(calculateX(), calculateY());
+            if (mIsAnimationLocked)
+                throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
+            mDestX = calculateX();
+            mDestY = calculateY();
+
             setAnimationFinishedListener(new AnimationFinishedListener() {
                 @Override
                 public void onAnimationFinished() {
@@ -744,16 +778,8 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mCurrentPosY = mDestY;
         }
 
-        private void setup(int x, int y) {
-            if (mIsAnimationLocked)
-                throw new RuntimeException("Returning to user's finger. Avoid animations while mIsAnimationLocked flag is set.");
-            mDestX = x;
-            mDestY = y;
-        }
-
         public void setDuration(long duration) {
             mDuration = duration;
-            setup(mDestX, mDestY);
         }
 
         void setAnimationFinishedListener(AnimationFinishedListener l) {
@@ -767,9 +793,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         private int calculateX() {
             float velocityX = calculateVelocityX();
             int screenWidth = getScreenWidth();
-            int destX = (mCurrentPosX + mDraggableIcon.getWidth() / 2 > screenWidth / 2) ? screenWidth - mDraggableIcon.getWidth() - getIconHorizontalMargin() : getIconHorizontalMargin();
+            int leftSide = getIconHorizontalMargin();
+            int rightSide = screenWidth - mDraggableIcon.getWidth() - getIconHorizontalMargin();
+            int destX = (mCurrentPosX + mIconSize / 2 > screenWidth / 2) ? rightSide : leftSide;
             if (Math.abs(velocityX) > 50) {
-                destX = (velocityX > 0) ? screenWidth - mDraggableIcon.getWidth() - getIconHorizontalMargin() : getIconHorizontalMargin();
+                destX = (velocityX > 0) ? rightSide : leftSide;
             }
             return destX;
         }
@@ -778,9 +806,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             float velocityY = calculateVelocityY();
             int screenHeight = getScreenHeight();
             int destY = mCurrentPosY + (int) (velocityY * 3);
-            if (destY <= 0) destY = getIconVerticalMargin();
-            if (destY >= screenHeight - mDraggableIcon.getHeight())
-                destY = screenHeight - mDraggableIcon.getHeight() - getIconVerticalMargin();
+            if (destY <= 0) {
+                destY = getIconVerticalMargin();
+            } else if (destY >= screenHeight - mIconSize) {
+                destY = screenHeight - mIconSize - getIconVerticalMargin();
+            }
             return destY;
         }
 

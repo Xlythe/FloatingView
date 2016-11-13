@@ -38,7 +38,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     private static final int MARGIN_VIEW = 20;
     private static final int MARGIN_VERTICAL = 5;
-    private static final int MARGIN_HORIZONTAL = -20;
+    private static final int MARGIN_HORIZONTAL = -10;
     private static final int VIBRATION = 25;
     private static final int DELETE_ANIM_DURATION = 300;
 
@@ -59,6 +59,8 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     private float mOrigY;
     private boolean mDragged;
     private int mIconSize;
+    private final Point mStartingPositionPoint = new Point();
+    private final Point mOpenPositionPoint = new Point();
 
     // View variables
     private ViewGroup mRootView;
@@ -80,10 +82,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     private LimitedQueue<Float> mDeltaXArray;
     private LimitedQueue<Float> mDeltaYArray;
     private AnimationTask mAnimationTask;
+    private final Point mIconPositionInDeleteModePoint = new Point();
 
     // Open/Close variables
     private boolean mIsViewOpen = false;
-    private Point mWiggle = new Point(0, 0);
+    private final Point mWiggle = new Point(0, 0);
     private boolean mEnableWiggle = false;
 
     // Close logic
@@ -311,12 +314,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     }
                 }
                 if (isDeleteMode(x, y)) {
-                    if (!mIsInDeleteMode) animateToDeleteBoxCenter(new AnimationFinishedListener() {
-                        @Override
-                        public void onAnimationFinished() {
-                            mDontVibrate = true;
-                        }
-                    });
+                    if (!mIsInDeleteMode) animateToDeleteBoxCenter();
                 } else if (isDeleteMode() && !mIsAnimationLocked) {
                     mIsInDeleteMode = false;
                     if (mAnimationTask != null) {
@@ -437,12 +435,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     mEnableWiggle = true;
 
                     if (isDeleteMode()) {
-                        if (!mIsInDeleteMode) animateToDeleteBoxCenter(new AnimationFinishedListener() {
-                            @Override
-                            public void onAnimationFinished() {
-                                mDontVibrate = true;
-                            }
-                        });
+                        if (!mIsInDeleteMode) animateToDeleteBoxCenter();
                     }
                 }
             });
@@ -538,6 +531,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     private void stop(boolean animate) {
         if (mIsBeingDestroyed) return;
         mIsBeingDestroyed = true;
+        mDontVibrate = true;
 
         if (animate) {
             animateToDeleteBoxCenter(new AnimationFinishedListener() {
@@ -566,11 +560,16 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     private Point calculatorIconPositionInDeleteMode() {
-        return new Point(mWiggle.x + getScreenWidth() / 2 - mDraggableIcon.getWidth() / 2,
-                mWiggle.y + mRootView.getHeight() - DELETE_BOX_HEIGHT / 2 - mDraggableIcon.getHeight() / 2 + MAGIC_OFFSET);
+        mIconPositionInDeleteModePoint.x = mWiggle.x + getScreenWidth() / 2 - mDraggableIcon.getWidth() / 2;
+        mIconPositionInDeleteModePoint.y = mWiggle.y + mRootView.getHeight() - DELETE_BOX_HEIGHT / 2 - mDraggableIcon.getHeight() / 2 + MAGIC_OFFSET;
+        return mIconPositionInDeleteModePoint;
     }
 
-    private void animateToDeleteBoxCenter(final AnimationFinishedListener l) {
+    private void animateToDeleteBoxCenter() {
+        animateToDeleteBoxCenter(null);
+    }
+
+    private void animateToDeleteBoxCenter(@Nullable final AnimationFinishedListener l) {
         if (mIsAnimationLocked || mRootView == null || mDraggableIcon == null)
             return;
         mIsInDeleteMode = true;
@@ -598,7 +597,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             @Override
             public void onAnimationFinished() {
                 mIsAnimatingToDeleteMode = false;
-                l.onAnimationFinished();
+                if (l != null) {
+                    l.onAnimationFinished();
+                }
             }
         });
         mAnimationTask.run();
@@ -607,10 +608,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     private void calculateWiggle(int x, int y) {
-        Point closeIcon = new Point(getScreenWidth() / 2, mRootView.getHeight() - DELETE_BOX_HEIGHT / 2);
-        int wiggleX = (x - closeIcon.x) / 10;
-        int wiggleY = Math.max(-1 * DELETE_BOX_HEIGHT / 8, (y - closeIcon.y) / 10);
-        mWiggle = new Point(wiggleX, wiggleY);
+        int closeIconX = getScreenWidth() / 2;
+        int closeIconY = mRootView.getHeight() - DELETE_BOX_HEIGHT / 2;
+        mWiggle.x = (x - closeIconX) / 10;
+        mWiggle.y = Math.max(-1 * DELETE_BOX_HEIGHT / 8, (y - closeIconY) / 10);
     }
 
     public void open() {
@@ -653,14 +654,18 @@ public abstract class FloatingView extends Service implements OnTouchListener {
      * Returns the x,y coordinate of the top right corner of the icon when first launched
      */
     protected Point getStartingPosition() {
-        return new Point(getIconHorizontalMargin(), STARTING_POINT_Y);
+        mStartingPositionPoint.x = getIconHorizontalMargin();
+        mStartingPositionPoint.y = STARTING_POINT_Y;
+        return mStartingPositionPoint;
     }
 
     /**
      * Returns the x,y coordinate of the top right corner of the icon when opened
      */
     protected Point getOpenPosition() {
-        return new Point(getScreenWidth() - mDraggableIcon.getWidth() - getMargin(), STARTING_POINT_Y);
+        mOpenPositionPoint.x = getScreenWidth() - mDraggableIcon.getWidth() - getMargin();
+        mOpenPositionPoint.y = STARTING_POINT_Y;
+        return mOpenPositionPoint;
     }
 
     /**

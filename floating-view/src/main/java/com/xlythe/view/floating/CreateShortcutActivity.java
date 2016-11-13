@@ -7,17 +7,22 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.DrawableRes;
+import android.util.Log;
 
 /**
  * Creates the shortcut icon
  */
 public abstract class CreateShortcutActivity extends Activity {
+    private static final String TAG = "CreateShortcutActivity";
+
     private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
 
     @DrawableRes
     public abstract int getShortcutIcon();
 
     public abstract CharSequence getShortcutName();
+
+    public abstract Intent getOpenShortcutActivityIntent();
 
     public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -30,6 +35,9 @@ public abstract class CreateShortcutActivity extends Activity {
             } else {
                 onSuccess();
             }
+        } else {
+            Log.w(TAG, "CreateShortcutActivity called with unexpected Action " + getIntent().getAction());
+            onFailure();
         }
     }
 
@@ -37,9 +45,8 @@ public abstract class CreateShortcutActivity extends Activity {
         Intent.ShortcutIconResource icon = Intent.ShortcutIconResource.fromContext(this, getShortcutIcon());
 
         Intent intent = new Intent();
-        Intent launchIntent = new Intent(this, OpenShortcutActivity.class);
 
-        intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, launchIntent);
+        intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, getOpenShortcutActivityIntent());
         intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, getShortcutName());
         intent.putExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE, icon);
 

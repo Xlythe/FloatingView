@@ -1,5 +1,6 @@
 package com.xlythe.view.floating.sample;
 
+import android.content.Intent;
 import android.support.annotation.DrawableRes;
 
 import com.xlythe.view.floating.CreateShortcutActivity;
@@ -17,5 +18,10 @@ public class CreateActivity extends CreateShortcutActivity {
     @Override
     public int getShortcutIcon() {
         return R.mipmap.ic_launcher;
+    }
+
+    @Override
+    public Intent getOpenShortcutActivityIntent() {
+        return new Intent(this, OpenActivity.class);
     }
 }

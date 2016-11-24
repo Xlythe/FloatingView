@@ -114,7 +114,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (ACTION_OPEN.equals(intent.getAction())) {
+        if (intent != null && ACTION_OPEN.equals(intent.getAction())) {
             open();
         }
         return super.onStartCommand(intent, flags, startId);

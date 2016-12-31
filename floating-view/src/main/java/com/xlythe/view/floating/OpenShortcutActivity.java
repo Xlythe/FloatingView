@@ -12,6 +12,8 @@ import android.provider.Settings;
 public abstract class OpenShortcutActivity extends Activity {
     private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
 
+    public static final String ACTION_OPEN = FloatingView.ACTION_OPEN;
+
     public abstract Intent createServiceIntent();
 
     public void onCreate(Bundle state) {
@@ -28,6 +30,9 @@ public abstract class OpenShortcutActivity extends Activity {
 
     private void onSuccess() {
         Intent intent = createServiceIntent();
+        if (ACTION_OPEN.equals(getIntent().getAction()) && intent.getAction() == null) {
+            intent.setAction(ACTION_OPEN);
+        }
         startService(intent);
         finish();
     }

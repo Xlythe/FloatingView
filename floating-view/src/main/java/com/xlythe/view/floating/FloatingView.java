@@ -663,7 +663,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
      * Returns the x,y coordinate of the top right corner of the icon when opened
      */
     protected Point getOpenPosition() {
-        mOpenPositionPoint.x = getScreenWidth() - mDraggableIcon.getWidth() - getMargin();
+        mOpenPositionPoint.x = getScreenWidth() - mIconSize - getMargin();
         mOpenPositionPoint.y = STARTING_POINT_Y;
         return mOpenPositionPoint;
     }

@@ -50,6 +50,13 @@ public class FloatingNotes extends FloatingView  {
 }
 ```
 
+Updating the AndroidManifest
+-----------------
+FloatingView extends Service, and must be declared in your AndroidManfiest.xml
+```java
+<service android:name=".FloatingNotes" />
+```
+
 License
 -------
 

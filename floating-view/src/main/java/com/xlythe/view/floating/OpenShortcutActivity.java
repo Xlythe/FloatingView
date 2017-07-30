@@ -3,6 +3,7 @@ package com.xlythe.view.floating;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 
@@ -19,7 +20,7 @@ public abstract class OpenShortcutActivity extends Activity {
     public void onCreate(Bundle state) {
         super.onCreate(state);
 
-        if (android.os.Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             startActivityForResult(
                     new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
                     REQUEST_CODE_WINDOW_OVERLAY_PERMISSION);

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Floating Notes</string>
+    <string name="floating_notification_description">Tap to open</string>
 </resources>

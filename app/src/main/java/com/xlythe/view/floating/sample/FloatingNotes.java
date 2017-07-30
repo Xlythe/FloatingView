@@ -31,7 +31,7 @@ public class FloatingNotes extends FloatingView {
         return new NotificationCompat.Builder(this)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(getString(R.string.app_name))
-                .setContentText("Tap to open")
+                .setContentText(getString(R.string.floating_notification_description))
                 .setContentIntent(PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT))
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .build();

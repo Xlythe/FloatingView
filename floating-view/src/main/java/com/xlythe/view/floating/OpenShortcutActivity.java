@@ -52,7 +52,7 @@ public abstract class OpenShortcutActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_WINDOW_OVERLAY_PERMISSION) {
-            if (android.os.Build.VERSION.SDK_INT >= 23 && Settings.canDrawOverlays(this)) {
+            if (Build.VERSION.SDK_INT >= 23 && Settings.canDrawOverlays(this)) {
                 onSuccess();
             } else {
                 onFailure();

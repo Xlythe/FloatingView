@@ -34,7 +34,11 @@ public abstract class OpenShortcutActivity extends Activity {
         if (ACTION_OPEN.equals(getIntent().getAction()) && intent.getAction() == null) {
             intent.setAction(ACTION_OPEN);
         }
-        startService(intent);
+        if (Build.VERSION.SDK_INT >= 26) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
         finish();
     }
 

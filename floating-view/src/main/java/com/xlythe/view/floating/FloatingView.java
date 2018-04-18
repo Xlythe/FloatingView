@@ -1,5 +1,6 @@
 package com.xlythe.view.floating;
 
+import android.Manifest;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Notification;
@@ -8,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
@@ -16,6 +18,7 @@ import android.os.IBinder;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -250,11 +253,8 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
 
         mRootView.setVisibility(View.VISIBLE);
-        mInactiveButton.postDelayed(new Runnable() {
-            @Override
-            public void run() {
+        mInactiveButton.postDelayed(() -> {
                 if (mInactiveButton != null) mInactiveButton.setVisibility(View.INVISIBLE);
-            }
         }, 30);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
@@ -291,7 +291,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 }
 
                 if (mIsInDeleteMode) {
-                    stop(true);
+                    stop();
                 } else {
                     hideDeleteBox(false);
                     mDraggableIcon.setScaleX(1f);
@@ -419,16 +419,13 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mDeleteIconHolder.setTranslationY(CLOSE_ANIMATION_DISTANCE);
 
             ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                @Override
-                public void onAnimationUpdate(ValueAnimator valueAnimator) {
-                    float percent = valueAnimator.getAnimatedFraction();
-                    mDeleteIconHolder.setTranslationX(mWiggle.x * percent);
+            animator.addUpdateListener((valueAnimator) -> {
+                float percent = valueAnimator.getAnimatedFraction();
+                mDeleteIconHolder.setTranslationX(mWiggle.x * percent);
 
-                    int destinationY = mWiggle.y;
-                    float deltaY = destinationY - CLOSE_ANIMATION_DISTANCE;
-                    mDeleteIconHolder.setTranslationY(CLOSE_ANIMATION_DISTANCE + (deltaY * percent));
-                }
+                int destinationY = mWiggle.y;
+                float deltaY = destinationY - CLOSE_ANIMATION_DISTANCE;
+                mDeleteIconHolder.setTranslationY(CLOSE_ANIMATION_DISTANCE + (deltaY * percent));
             });
             animator.addListener(new AnimationFinishedListener() {
                 @Override
@@ -477,13 +474,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
 
         mInactiveButton.setVisibility(View.VISIBLE);
-        mRootView.postDelayed(new Runnable() {
-            @Override
-            public void run() {
+        mRootView.postDelayed(() -> {
                 if (mRootView != null && !mIsViewOpen) {
                     mRootView.setVisibility(View.GONE);
                 }
-            }
         }, 30);
 
         // Our icon is made up of two parts. The outer shell, which uses mInactiveParams to position
@@ -522,42 +516,40 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         if (!mIsDestroyed) mWindowManager.updateViewLayout(mInactiveButton, mInactiveParams);
     }
 
+    @SuppressWarnings({"MissingPermission"})
     private void vibrate() {
         if (mDontVibrate) return;
         Vibrator vi = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         if (!vi.hasVibrator()) return;
+        if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.VIBRATE) != PackageManager.PERMISSION_GRANTED) return;
         vi.vibrate(VIBRATION);
     }
 
-    private void stop(boolean animate) {
+    private void stop() {
         if (mIsBeingDestroyed) return;
         mIsBeingDestroyed = true;
         mDontVibrate = true;
 
-        if (animate) {
-            animateToDeleteBoxCenter(new AnimationFinishedListener() {
-                @Override
-                public void onAnimationFinished() {
-                    mDeleteIconHolder.setTranslationX(mWiggle.x);
-                    mDeleteIconHolder.setTranslationY(mWiggle.y);
-                    hideDeleteBox(true);
-                    mDraggableIcon.animate()
-                            .scaleX(0.3f)
-                            .scaleY(0.3f)
-                            .translationYBy(CLOSE_ANIMATION_DISTANCE)
-                            .setDuration(DELETE_ANIM_DURATION)
-                            .setInterpolator(new AccelerateInterpolator())
-                            .setListener(new AnimationFinishedListener() {
-                                @Override
-                                public void onAnimationFinished() {
-                                    stopSelf();
-                                }
-                            });
-                }
-            });
-        } else {
-            stopSelf();
-        }
+        animateToDeleteBoxCenter(new AnimationFinishedListener() {
+            @Override
+            public void onAnimationFinished() {
+                mDeleteIconHolder.setTranslationX(mWiggle.x);
+                mDeleteIconHolder.setTranslationY(mWiggle.y);
+                hideDeleteBox(true);
+                mDraggableIcon.animate()
+                        .scaleX(0.3f)
+                        .scaleY(0.3f)
+                        .translationYBy(CLOSE_ANIMATION_DISTANCE)
+                        .setDuration(DELETE_ANIM_DURATION)
+                        .setInterpolator(new AccelerateInterpolator())
+                        .setListener(new AnimationFinishedListener() {
+                            @Override
+                            public void onAnimationFinished() {
+                                stopSelf();
+                            }
+                        });
+            }
+        });
     }
 
     private Point calculatorIconPositionInDeleteMode() {
@@ -632,12 +624,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 }
             });
             mAnimationTask.run();
-            mRootView.setOnTouchListener(new OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    close();
-                    return true;
-                }
+            mRootView.setOnTouchListener((v, event) -> {
+                close();
+                return true;
             });
 
             // Home and Recent Apps send ACTION_CLOSE_SYSTEM_DIALOGS so we can use that to hide our self.
@@ -936,13 +925,10 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                         .setListener(mAnimationFinishedListener);
             } else {
                 ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-                animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                    @Override
-                    public void onAnimationUpdate(ValueAnimator valueAnimator) {
-                        float percent = valueAnimator.getAnimatedFraction();
-                        mDraggableIcon.setTranslationX(mDynamicUpdate.getTranslationX(percent));
-                        mDraggableIcon.setTranslationY(mDynamicUpdate.getTranslationY(percent));
-                    }
+                animator.addUpdateListener(valueAnimator -> {
+                    float percent = valueAnimator.getAnimatedFraction();
+                    mDraggableIcon.setTranslationX(mDynamicUpdate.getTranslationX(percent));
+                    mDraggableIcon.setTranslationY(mDynamicUpdate.getTranslationY(percent));
                 });
                 animator.setDuration(mDuration);
                 animator.setInterpolator(mInterpolator);

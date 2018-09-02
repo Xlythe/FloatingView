@@ -6,13 +6,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.v4.app.NotificationCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.xlythe.view.floating.FloatingView;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
 
 public class FloatingNotes extends FloatingView {
     private static final String CHANNEL_ID = "CHANNEL_ID";

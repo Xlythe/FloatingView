@@ -16,9 +16,6 @@ import android.graphics.Point;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Vibrator;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -35,6 +32,10 @@ import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 public abstract class FloatingView extends Service implements OnTouchListener {
     private static final String TAG = "FloatingView";
@@ -721,12 +722,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         Log.v(TAG, "show()");
         if (mView == null) {
             mView = inflateView(mRootView);
-            mView.setOnTouchListener(new OnTouchListener() {
-                @Override
-                public boolean onTouch(View view, MotionEvent motionEvent) {
-                    return true;
-                }
-            });
+            mView.setOnTouchListener((view, motionEvent) -> true);
             FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) mView.getLayoutParams();
             params.leftMargin = getMargin();
             params.rightMargin = getMargin();

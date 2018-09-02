@@ -1,9 +1,10 @@
 package com.xlythe.view.floating.sample;
 
 import android.content.Intent;
-import android.support.annotation.DrawableRes;
 
 import com.xlythe.view.floating.CreateShortcutActivity;
+
+import androidx.annotation.DrawableRes;
 
 /**
  * Creates the shortcut icon

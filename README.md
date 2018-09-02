@@ -6,7 +6,7 @@ Where to Download
 -----------------
 ```groovy
 dependencies {
-  compile 'com.xlythe:floating-view:1.2.1'
+  implementation 'com.xlythe:floating-view:1.2.2'
 }
 ```
 
@@ -15,6 +15,7 @@ Permissions
 The following permissions are required in your AndroidManfiest.xml
 ```xml
 <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-permission android:name="android.permission.VIBRATE" />
 ```
 

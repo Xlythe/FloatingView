@@ -275,6 +275,9 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     mAnimationTask.cancel();
                 }
                 break;
+            // The inactive view is hidden, which triggers cancel. Cancel cannot be normally triggered
+            // because we always move the view so that it's under the users finger as they drag.
+            case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 mIsAnimationLocked = false;
                 if (mAnimationTask != null) {

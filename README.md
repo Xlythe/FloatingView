@@ -14,9 +14,9 @@ Permissions
 -----------------
 The following permissions are required in your AndroidManfiest.xml
 ```xml
-<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-<uses-permission android:name="android.permission.VIBRATE" />
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" android:maxSdkVersion="30" />
+<uses-permission android:name="android.permission.VIBRATE" android:maxSdkVersion="30" />
 ```
 
 FloatingView

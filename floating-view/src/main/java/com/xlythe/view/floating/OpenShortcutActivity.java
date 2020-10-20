@@ -110,6 +110,8 @@ public abstract class OpenShortcutActivity extends Activity {
             Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
                             .setContentIntent(notification.contentIntent)
+                            .setContentTitle(notification.extras.getCharSequence(Notification.EXTRA_TITLE))
+                            .setContentText(notification.extras.getCharSequence(Notification.EXTRA_TEXT))
                             .setSmallIcon(notification.getSmallIcon())
                             .setBubbleMetadata(bubbleData)
                             .addPerson(person)

@@ -2,12 +2,12 @@
     android:layout_width="150dp"
     android:layout_height="400dp"
     android:orientation="vertical"
-    android:background="#3000fff0">
+    android:padding="8dp"
+    android:background="?android:windowBackground">
 
     <TextView
         android:text="Hello World"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:textColor="@android:color/white" />
+        android:layout_height="match_parent" />
 
 </LinearLayout>

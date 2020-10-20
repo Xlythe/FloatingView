@@ -42,7 +42,7 @@
             android:exported="false"
             android:label="@string/app_name"
             android:icon="@mipmap/ic_launcher"
-            android:theme="@style/FloatingView.Transparent"
+            android:theme="@style/FloatingView"
             android:allowEmbedded="true"
             android:resizeableActivity="true"
             android:documentLaunchMode="always" />

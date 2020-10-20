@@ -39,8 +39,8 @@ import androidx.core.content.ContextCompat;
 
 @Deprecated
 public abstract class FloatingView extends Service implements OnTouchListener {
-    private static final String TAG = "FloatingView";
-    private static final boolean DEBUG = false;
+    static final String TAG = "FloatingView";
+    static final boolean DEBUG = false;
 
     private static final int MARGIN_VIEW = 20;
     private static final int MARGIN_VERTICAL = 5;

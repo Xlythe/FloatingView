@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
@@ -18,10 +20,14 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.util.Preconditions;
+
+import java.util.Arrays;
 
 /**
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
@@ -29,10 +35,13 @@ import androidx.core.util.Preconditions;
 public abstract class OpenShortcutActivity extends Activity {
     // The minimum version to use Notification Bubbles.
     // Acceptable values are 29 (requires Dev Options), 30, and 999 (disabled).
-    private static final int MIN_SDK_BUBBLES = 999;
+    private static final int MIN_SDK_BUBBLES = 30;
 
     private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
     private static final int REQUEST_CODE_BUBBLES_PERMISSION = 10002;
+
+    // A fake ID used to create a shortcut. This is required in order to display a Bubble.
+    private static final String SHORTCUT_ID = "floating.shortcutId";
 
     public static final String ACTION_OPEN = FloatingView.ACTION_OPEN;
 
@@ -44,6 +53,7 @@ public abstract class OpenShortcutActivity extends Activity {
     @RequiresApi(MIN_SDK_BUBBLES)
     protected abstract Notification createNotification();
 
+    @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
 
@@ -66,26 +76,52 @@ public abstract class OpenShortcutActivity extends Activity {
         if (Build.VERSION.SDK_INT >= MIN_SDK_BUBBLES) {
             // On R+, we launch the floating view as a bubble
             Intent intent = createActivityIntent();
+            Icon icon = getActivityIcon(intent);
+            String name = getActivityName(intent);
+
             PendingIntent bubbleIntent =
                     PendingIntent.getActivity(this, 0, intent, 0);
             Notification.BubbleMetadata bubbleData =
                     new Notification.BubbleMetadata.Builder()
                             .setIntent(bubbleIntent)
-                            .setIcon(getActivityIcon(intent))
+                            .setIcon(icon)
                             .setDesiredHeight(600)
                             .setAutoExpandBubble(true)
                             .setSuppressNotification(true)
                             .build();
-            Person person = new Person.Builder().setIcon(getActivityIcon(intent)).setName(getActivityName(intent)).build();
+
+            // Bubbles require a MessagingStyle on earlier versions of R (see https://issuetracker.google.com/issues/150857757)
+            Person person = new Person.Builder().setIcon(icon).setName(name).build();
+            Notification.MessagingStyle style = new Notification.MessagingStyle(person);
+
+            // Bubbles require a long lived shortcut on R+ (see https://developer.android.com/guide/topics/ui/conversations#bubbles)
+            ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
+            ShortcutInfo shortcutInfo = new ShortcutInfo.Builder(this, SHORTCUT_ID)
+                    .setIcon(icon)
+                    .setShortLabel(name)
+                    .setPerson(person)
+                    .setLongLived(true)
+                    .setIntent(new Intent(ACTION_OPEN).setComponent(getComponentName()))
+                    .build();
+            shortcutManager.addDynamicShortcuts(Arrays.asList(shortcutInfo));
+
+            // Bubbles are launched by showing a notification.
             Notification notification = createNotification();
             Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
                             .setContentIntent(notification.contentIntent)
                             .setSmallIcon(notification.getSmallIcon())
                             .setBubbleMetadata(bubbleData)
-                            .addPerson(person);
+                            .addPerson(person)
+                            .setShortcutId(SHORTCUT_ID)
+                            .setStyle(style);
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.notify(0, builder.build());
+
+            // Clean up the shortcuts once we're done. Although it works if we immediately remove the
+            // shortcut, the Bubble icon is loaded lazily and gets corrupted if we do so. Adding a short
+            // delay fixes this problem.
+            new Handler().postDelayed(() -> shortcutManager.removeDynamicShortcuts(Arrays.asList(SHORTCUT_ID)), 5000);
         } else {
             // On pre-R, we launch the floating view as a service
             Intent intent = createServiceIntent();
@@ -174,13 +210,23 @@ public abstract class OpenShortcutActivity extends Activity {
         // works well for both cases.
         boolean bubblesEnabledGlobally;
         try {
-            bubblesEnabledGlobally = Settings.Global.getInt(getContentResolver(), "notification_bubbles") == 1;
+            if (Build.VERSION.SDK_INT >= 30) {
+                // In R+, the system setting is stored in Global.
+                bubblesEnabledGlobally = Settings.Global.getInt(getContentResolver(), "notification_bubbles") == 1;
+            } else {
+                // In Q, the system setting is stored in Secure.
+                bubblesEnabledGlobally = Settings.Secure.getInt(getContentResolver(), "notification_bubbles") == 1;
+            }
         } catch (Settings.SettingNotFoundException e) {
             // If we're not able to read the system setting, just assume the best case.
             bubblesEnabledGlobally = true;
         }
 
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        if (FloatingView.DEBUG) {
+            Log.d(FloatingView.TAG, "Bubbles are " + (bubblesEnabledGlobally ? "" : "not ") + "enabled globally");
+            Log.d(FloatingView.TAG, "Bubbles are " + (notificationManager.areBubblesAllowed() ? "" : "not ") + "enabled locally");
+        }
         return bubblesEnabledGlobally && notificationManager.areBubblesAllowed();
     }
 }

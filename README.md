@@ -6,7 +6,7 @@ Where to Download
 -----------------
 ```groovy
 dependencies {
-  implementation 'com.xlythe:floating-view:1.2.2'
+  implementation 'com.xlythe:floating-view:2.0'
 }
 ```
 
@@ -21,9 +21,9 @@ The following permissions are required in your AndroidManfiest.xml
 
 FloatingView
 -----------------
-Extend FloatingView and override the required methods. When open, your view will appear beneath your button.
+Extend FloatingViewService (<R) and and FloatingViewActivity (R+) to implement the floating window.
 ```java
-public class FloatingNotes extends FloatingView  {
+public class FloatingNotesService extends FloatingViewService  {
     @NonNull
     @Override
     public View inflateButton(@NonNull ViewGroup parent) {
@@ -50,12 +50,56 @@ public class FloatingNotes extends FloatingView  {
     }
 }
 ```
+```java
+public class FloatingNotesActivity extends FloatingViewActivity  {
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+    }
+}
+```
+Extend OpenShortcutActivity to create the entrypoint for the floating window. This Activity will
+prompt the user for the necessary permissions, and will subsequently launch the floating window.
+```java
+public class OpenActivity extends OpenShortcutActivity {
+    @Override
+    public Intent createServiceIntent() {
+        return new Intent(this, FloatingNotesService.class);
+    }
+
+    @Override
+    public Intent createActivityIntent() {
+        return new Intent(this, FloatingNotesActivity.class);
+    }
+
+    @RequiresApi(29)
+    @Override
+    protected Notification createNotification() {
+        NotificationChannel notificationChannel = new NotificationChannel(FloatingNotesService.CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_MIN);
+        notificationChannel.setAllowBubbles(true);
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.createNotificationChannel(notificationChannel);
+
+        Intent intent = new Intent(ACTION_OPEN).setPackage(getPackageName());
+        return new NotificationCompat.Builder(this, FloatingNotesService.CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(getString(R.string.app_name))
+                .setContentText(getString(R.string.floating_notification_description))
+                .setContentIntent(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT))
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .build();
+    }
+}
+```
 
 Updating the AndroidManifest
 -----------------
-FloatingView extends Service, and must be declared in your AndroidManfiest.xml
+Your FloatingViewService, FloatingViewActivity, and OpenShortcutActivity components must be declared in AndroidManfiest.xml
 ```java
-<service android:name=".FloatingNotes" />
+<activity android:name=".FloatingNotesActivity" />
+<service android:name=".FloatingNotesService" />
+<activity android:name=".OpenActivity" />
 ```
 
 License

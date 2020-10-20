@@ -4,7 +4,7 @@ import java.util.LinkedList;
 
 public class LimitedQueue<E> extends LinkedList<E> {
     private static final long serialVersionUID = 1L;
-    private int limit;
+    private final int limit;
 
     public LimitedQueue(int limit) {
         this.limit = limit;

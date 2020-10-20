@@ -1,12 +1,14 @@
 package com.xlythe.view.floating;
 
+import static com.xlythe.view.floating.FloatingView.DEBUG;
+import static com.xlythe.view.floating.FloatingView.TAG;
+
 import android.app.Activity;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -14,7 +16,6 @@ import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -109,7 +110,7 @@ public abstract class OpenShortcutActivity extends Activity {
             Notification notification = createNotification();
             Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
-                            .setContentIntent(notification.contentIntent)
+                            .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT))
                             .setContentTitle(notification.extras.getCharSequence(Notification.EXTRA_TITLE))
                             .setContentText(notification.extras.getCharSequence(Notification.EXTRA_TEXT))
                             .setSmallIcon(notification.getSmallIcon())
@@ -211,23 +212,24 @@ public abstract class OpenShortcutActivity extends Activity {
         // (verified on R), so we use this check as well. Luckily, ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS
         // works well for both cases.
         boolean bubblesEnabledGlobally;
-        try {
-            if (Build.VERSION.SDK_INT >= 30) {
-                // In R+, the system setting is stored in Global.
-                bubblesEnabledGlobally = Settings.Global.getInt(getContentResolver(), "notification_bubbles") == 1;
-            } else {
-                // In Q, the system setting is stored in Secure.
-                bubblesEnabledGlobally = Settings.Secure.getInt(getContentResolver(), "notification_bubbles") == 1;
-            }
-        } catch (Settings.SettingNotFoundException e) {
-            // If we're not able to read the system setting, just assume the best case.
-            bubblesEnabledGlobally = true;
+        if (Build.VERSION.SDK_INT >= 30) {
+            // In R+, the system setting is stored in Global.
+            bubblesEnabledGlobally = Settings.Global.getInt(getContentResolver(), "notification_bubbles", 1) == 1;
+        } else {
+            // In Q, the system setting is stored in Secure.
+            bubblesEnabledGlobally = Settings.Secure.getInt(getContentResolver(), "notification_bubbles", 1) == 1;
         }
 
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        if (FloatingView.DEBUG) {
-            Log.d(FloatingView.TAG, "Bubbles are " + (bubblesEnabledGlobally ? "" : "not ") + "enabled globally");
-            Log.d(FloatingView.TAG, "Bubbles are " + (notificationManager.areBubblesAllowed() ? "" : "not ") + "enabled locally");
+        if (DEBUG) {
+            Log.d(TAG, "Bubbles are " + (bubblesEnabledGlobally ? "" : "not ") + "enabled globally");
+            Log.d(TAG, "Bubbles are " + (notificationManager.areBubblesAllowed() ? "" : "not ") + "enabled locally");
+
+            // This boolean is supposed to be set to map to the current state of the Bubble notification.
+            // True when the notification is displayed as a bubble and false when it's displayed as a notification.
+            // This is set inside of BubbleController#onUserChangedBubble. However, every time I query this, it returns false.
+            boolean channelCanBubble = notificationManager.getNotificationChannel(createNotification().getChannelId()).canBubble();
+            Log.d(TAG, "Bubbles are " + (channelCanBubble ? "" : "not ") + "enabled for channel");
         }
         return bubblesEnabledGlobally && notificationManager.areBubblesAllowed();
     }

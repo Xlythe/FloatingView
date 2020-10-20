@@ -1,5 +1,7 @@
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
-    <style name="TransparentBackground">
+    <style name="FloatingView" />
+
+    <style name="FloatingView.Transparent">
         <item name="android:windowFrame">@null</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowAnimationStyle">@null</item>

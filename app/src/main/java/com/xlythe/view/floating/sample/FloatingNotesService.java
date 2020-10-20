@@ -10,13 +10,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.xlythe.view.floating.FloatingView;
+import com.xlythe.view.floating.FloatingService;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
-public class FloatingNotes extends FloatingView {
-    private static final String CHANNEL_ID = "CHANNEL_ID";
+public class FloatingNotesService extends FloatingService {
+    static final String CHANNEL_ID = "CHANNEL_ID";
 
     @NonNull
     @Override
@@ -36,10 +36,10 @@ public class FloatingNotes extends FloatingView {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             notificationManager.createNotificationChannel(
-                    new NotificationChannel(CHANNEL_ID, "Floating Notes", NotificationManager.IMPORTANCE_MIN));
+                    new NotificationChannel(CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_MIN));
         }
 
-        Intent intent = new Intent(this, FloatingNotes.class).setAction(ACTION_OPEN);
+        Intent intent = new Intent(this, FloatingNotesService.class).setAction(ACTION_OPEN);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(getString(R.string.app_name))

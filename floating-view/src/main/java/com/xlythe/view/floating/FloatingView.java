@@ -37,6 +37,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+@Deprecated
 public abstract class FloatingView extends Service implements OnTouchListener {
     private static final String TAG = "FloatingView";
     private static final boolean DEBUG = false;

@@ -3,9 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.xlythe.view.floating.sample">
 
-    <!-- For floating calculator -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- For floating window -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
@@ -48,4 +48,4 @@
             android:documentLaunchMode="always" />
         <service android:name=".FloatingNotesService" />
     </application>
-</manifest> 
+</manifest>

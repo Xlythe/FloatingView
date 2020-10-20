@@ -1,2 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="com.xlythe.view.floating" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.xlythe.view.floating">
+
+    <!-- For floating window -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.VIBRATE" android:maxSdkVersion="29" />
+</manifest>

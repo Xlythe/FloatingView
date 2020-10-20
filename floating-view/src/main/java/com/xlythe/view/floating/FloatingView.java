@@ -723,7 +723,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     @SuppressLint("RtlHardcoded")
     private void show() {
-        Log.v(TAG, "show()");
+        if (DEBUG) Log.v(TAG, "show()");
         if (mView == null) {
             mView = inflateView(mRootView);
             mView.setOnTouchListener((view, motionEvent) -> true);
@@ -756,7 +756,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     private void hide(final boolean destroyView) {
-        Log.v(TAG, "hide()");
+        if (DEBUG) Log.v(TAG, "hide()");
         if (mView != null) {
             mView.setAlpha(1);
             mView.animate().setDuration(150).alpha(0).setListener(new AnimationFinishedListener() {

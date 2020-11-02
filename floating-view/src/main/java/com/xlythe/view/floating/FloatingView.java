@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.os.Build;
@@ -255,9 +256,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
 
         mRootView.setVisibility(View.VISIBLE);
-        mInactiveButton.postDelayed(() -> {
-                if (mInactiveButton != null) mInactiveButton.setVisibility(View.INVISIBLE);
-        }, 30);
+        if (mInactiveButton != null) mInactiveButton.setAlpha(0f);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 mPrevDragX = mOrigX = event.getRawX();
@@ -276,9 +275,6 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     mAnimationTask.cancel();
                 }
                 break;
-            // The inactive view is hidden, which triggers cancel. Cancel cannot be normally triggered
-            // because we always move the view so that it's under the users finger as they drag.
-            case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 mIsAnimationLocked = false;
                 if (mAnimationTask != null) {
@@ -478,7 +474,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     mCurrentPosX, mCurrentPosY, getScreenWidth(), getScreenHeight()));
         }
 
-        mInactiveButton.setVisibility(View.VISIBLE);
+        mInactiveButton.setAlpha(1f);
         mRootView.postDelayed(() -> {
                 if (mRootView != null && !mIsViewOpen) {
                     mRootView.setVisibility(View.GONE);
@@ -615,7 +611,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     public void open() {
         if (mRootView.getVisibility() == View.GONE) {
             mRootView.setVisibility(View.VISIBLE);
-            mInactiveButton.setVisibility(View.INVISIBLE);
+            mInactiveButton.setAlpha(0f);
         }
         if (!mIsViewOpen) {
             if (mIsAnimationLocked) return;

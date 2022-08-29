@@ -813,7 +813,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     private int getStatusBarHeight() {
         int result = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        @SuppressLint("DiscouragedApi") int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
         if (resourceId > 0) {
             result = getResources().getDimensionPixelSize(resourceId);
         }

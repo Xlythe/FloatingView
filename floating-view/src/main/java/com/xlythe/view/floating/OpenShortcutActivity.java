@@ -1,11 +1,7 @@
 package com.xlythe.view.floating;
 
-import static com.xlythe.view.floating.FloatingView.DEBUG;
-import static com.xlythe.view.floating.FloatingView.TAG;
-
 import android.app.Activity;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
@@ -28,7 +24,10 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 import androidx.core.util.Preconditions;
 
-import java.util.Arrays;
+import java.util.Collections;
+
+import static com.xlythe.view.floating.FloatingView.DEBUG;
+import static com.xlythe.view.floating.FloatingView.TAG;
 
 /**
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
@@ -81,7 +80,7 @@ public abstract class OpenShortcutActivity extends Activity {
             String name = getActivityName(intent);
 
             PendingIntent bubbleIntent =
-                    PendingIntent.getActivity(this, 0, intent, 0);
+                    PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
             Notification.BubbleMetadata bubbleData =
                     new Notification.BubbleMetadata.Builder()
                             .setIntent(bubbleIntent)
@@ -104,13 +103,13 @@ public abstract class OpenShortcutActivity extends Activity {
                     .setLongLived(true)
                     .setIntent(new Intent(ACTION_OPEN).setComponent(getComponentName()))
                     .build();
-            shortcutManager.addDynamicShortcuts(Arrays.asList(shortcutInfo));
+            shortcutManager.addDynamicShortcuts(Collections.singletonList(shortcutInfo));
 
             // Bubbles are launched by showing a notification.
             Notification notification = createNotification();
             Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
-                            .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT))
+                            .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE))
                             .setContentTitle(notification.extras.getCharSequence(Notification.EXTRA_TITLE))
                             .setContentText(notification.extras.getCharSequence(Notification.EXTRA_TEXT))
                             .setSmallIcon(notification.getSmallIcon())
@@ -124,7 +123,7 @@ public abstract class OpenShortcutActivity extends Activity {
             // Clean up the shortcuts once we're done. Although it works if we immediately remove the
             // shortcut, the Bubble icon is loaded lazily and gets corrupted if we do so. Adding a short
             // delay fixes this problem.
-            new Handler().postDelayed(() -> shortcutManager.removeDynamicShortcuts(Arrays.asList(SHORTCUT_ID)), 5000);
+            new Handler().postDelayed(() -> shortcutManager.removeDynamicShortcuts(Collections.singletonList(SHORTCUT_ID)), 5000);
         } else {
             // On pre-R, we launch the floating view as a service
             Intent intent = createServiceIntent();

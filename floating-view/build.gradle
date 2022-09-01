@@ -92,5 +92,5 @@ signing {
 
 dependencies {
     api fileTree(include: ['*.jar'], dir: 'libs')
-    api 'androidx.appcompat:appcompat:+'
+    api 'androidx.appcompat:appcompat:[1.5.0,)'
 }

@@ -1,5 +1,6 @@
 package com.xlythe.view.floating;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -19,24 +20,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
-import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.util.Preconditions;
 
 import java.util.Collections;
 
-import static com.xlythe.view.floating.FloatingView.DEBUG;
-import static com.xlythe.view.floating.FloatingView.TAG;
-
 /**
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
  */
 public abstract class OpenShortcutActivity extends Activity {
-    // The minimum version to use Notification Bubbles.
-    // Acceptable values are 29 (requires Dev Options), 30, and 999 (disabled).
-    private static final int MIN_SDK_BUBBLES = 30;
-
     private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
     private static final int REQUEST_CODE_BUBBLES_PERMISSION = 10002;
 
@@ -47,10 +40,10 @@ public abstract class OpenShortcutActivity extends Activity {
 
     protected abstract Intent createServiceIntent();
 
-    @RequiresApi(MIN_SDK_BUBBLES)
+    @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
     protected abstract Intent createActivityIntent();
 
-    @RequiresApi(MIN_SDK_BUBBLES)
+    @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
     protected abstract Notification createNotification();
 
     @Override
@@ -58,12 +51,12 @@ public abstract class OpenShortcutActivity extends Activity {
         super.onCreate(state);
 
         // From M~Q, we use window overlays to draw the floating view. From R+ we use bubbles.
-        if (Build.VERSION.SDK_INT >= MIN_SDK_BUBBLES && !canDisplayBubbles()) {
+        if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this, createNotification().getChannelId())) {
             startActivityForResult(
                     new Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
                             .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()),
                     REQUEST_CODE_BUBBLES_PERMISSION);
-        } else if (Build.VERSION.SDK_INT < MIN_SDK_BUBBLES && Build.VERSION.SDK_INT >= 23 && !canDrawOverlays()) {
+        } else if (Build.VERSION.SDK_INT < Bubbles.MIN_SDK_BUBBLES && Build.VERSION.SDK_INT >= 23 && !canDrawOverlays()) {
             startActivityForResult(
                     new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
                     REQUEST_CODE_WINDOW_OVERLAY_PERMISSION);
@@ -73,13 +66,13 @@ public abstract class OpenShortcutActivity extends Activity {
     }
 
     private void onSuccess() {
-        if (Build.VERSION.SDK_INT >= MIN_SDK_BUBBLES) {
+        if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES) {
             // On R+, we launch the floating view as a bubble
             Intent intent = createActivityIntent();
             Icon icon = getActivityIcon(intent);
             String name = getActivityName(intent);
 
-            PendingIntent bubbleIntent =
+            @SuppressLint("InlinedApi") PendingIntent bubbleIntent =
                     PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
             Notification.BubbleMetadata bubbleData =
                     new Notification.BubbleMetadata.Builder()
@@ -107,7 +100,7 @@ public abstract class OpenShortcutActivity extends Activity {
 
             // Bubbles are launched by showing a notification.
             Notification notification = createNotification();
-            Notification.Builder builder =
+            @SuppressLint("InlinedApi") Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
                             .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE))
                             .setContentTitle(notification.extras.getCharSequence(Notification.EXTRA_TITLE))
@@ -159,7 +152,7 @@ public abstract class OpenShortcutActivity extends Activity {
                 onFailure();
             }
         } else if (requestCode == REQUEST_CODE_BUBBLES_PERMISSION) {
-            if (canDisplayBubbles()) {
+            if (Bubbles.canDisplayBubbles(this)) {
                 onSuccess();
             } else {
                 onFailure();
@@ -200,36 +193,5 @@ public abstract class OpenShortcutActivity extends Activity {
         }
 
         return Settings.canDrawOverlays(this);
-    }
-
-    private boolean canDisplayBubbles() {
-        if (Build.VERSION.SDK_INT < MIN_SDK_BUBBLES) {
-            return false;
-        }
-
-        // NotificationManager#areBubblesAllowed does not check if bubbles have been globally disabled,
-        // (verified on R), so we use this check as well. Luckily, ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS
-        // works well for both cases.
-        boolean bubblesEnabledGlobally;
-        if (Build.VERSION.SDK_INT >= 30) {
-            // In R+, the system setting is stored in Global.
-            bubblesEnabledGlobally = Settings.Global.getInt(getContentResolver(), "notification_bubbles", 1) == 1;
-        } else {
-            // In Q, the system setting is stored in Secure.
-            bubblesEnabledGlobally = Settings.Secure.getInt(getContentResolver(), "notification_bubbles", 1) == 1;
-        }
-
-        NotificationManager notificationManager = getSystemService(NotificationManager.class);
-        if (DEBUG) {
-            Log.d(TAG, "Bubbles are " + (bubblesEnabledGlobally ? "" : "not ") + "enabled globally");
-            Log.d(TAG, "Bubbles are " + (notificationManager.areBubblesAllowed() ? "" : "not ") + "enabled locally");
-
-            // This boolean is supposed to be set to map to the current state of the Bubble notification.
-            // True when the notification is displayed as a bubble and false when it's displayed as a notification.
-            // This is set inside of BubbleController#onUserChangedBubble. However, every time I query this, it returns false.
-            boolean channelCanBubble = notificationManager.getNotificationChannel(createNotification().getChannelId()).canBubble();
-            Log.d(TAG, "Bubbles are " + (channelCanBubble ? "" : "not ") + "enabled for channel");
-        }
-        return bubblesEnabledGlobally && notificationManager.areBubblesAllowed();
     }
 }

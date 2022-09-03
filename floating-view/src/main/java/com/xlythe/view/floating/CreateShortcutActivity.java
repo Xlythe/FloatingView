@@ -17,6 +17,7 @@ public abstract class CreateShortcutActivity extends Activity {
     private static final String TAG = "CreateShortcutActivity";
 
     private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
+    private static final int REQUEST_CODE_BUBBLES_PERMISSION = 10002;
 
     @DrawableRes
     public abstract int getShortcutIcon();
@@ -29,7 +30,13 @@ public abstract class CreateShortcutActivity extends Activity {
         super.onCreate(state);
 
         if (Intent.ACTION_CREATE_SHORTCUT.equals(getIntent().getAction())) {
-            if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            // From M~Q, we use window overlays to draw the floating view. From R+ we use bubbles.
+            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this)) {
+                startActivityForResult(
+                        new Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()),
+                        REQUEST_CODE_BUBBLES_PERMISSION);
+            } else if (Build.VERSION.SDK_INT < Bubbles.MIN_SDK_BUBBLES && Build.VERSION.SDK_INT >= 23 && !canDrawOverlays()) {
                 startActivityForResult(
                         new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
                         REQUEST_CODE_WINDOW_OVERLAY_PERMISSION);
@@ -63,11 +70,28 @@ public abstract class CreateShortcutActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CODE_WINDOW_OVERLAY_PERMISSION) {
-            if (Build.VERSION.SDK_INT >= 23 && Settings.canDrawOverlays(this)) {
+            if (canDrawOverlays()) {
                 onSuccess();
             } else {
                 onFailure();
             }
+        } else if (requestCode == REQUEST_CODE_BUBBLES_PERMISSION) {
+            if (Bubbles.canDisplayBubbles(this)) {
+                onSuccess();
+            } else {
+                onFailure();
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    private boolean canDrawOverlays() {
+        if (Build.VERSION.SDK_INT < 23) {
+            // Before 23, just adding the permission to the manifest was enough.
+            return true;
+        }
+
+        return Settings.canDrawOverlays(this);
     }
 }

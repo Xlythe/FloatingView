@@ -1,7 +1,6 @@
 package com.xlythe.view.floating;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -15,11 +14,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
-import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
-import android.provider.Settings;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.util.Preconditions;
@@ -30,9 +26,6 @@ import java.util.Collections;
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
  */
 public abstract class OpenShortcutActivity extends Activity {
-    private static final int REQUEST_CODE_WINDOW_OVERLAY_PERMISSION = 10001;
-    private static final int REQUEST_CODE_BUBBLES_PERMISSION = 10002;
-
     // A fake ID used to create a shortcut. This is required in order to display a Bubble.
     private static final String SHORTCUT_ID = "floating.shortcutId";
 
@@ -46,27 +39,14 @@ public abstract class OpenShortcutActivity extends Activity {
     @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
     protected abstract Notification createNotification();
 
+    @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
     @Override
-    public void onCreate(Bundle state) {
-        super.onCreate(state);
-
-        // From M~Q, we use window overlays to draw the floating view. From R+ we use bubbles.
-        // Note that the notification channel must be created before we launch the Bubbles settings activity.
-        if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this, createNotification().getChannelId())) {
-            startActivityForResult(
-                    new Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()),
-                    REQUEST_CODE_BUBBLES_PERMISSION);
-        } else if (Build.VERSION.SDK_INT < Bubbles.MIN_SDK_BUBBLES && Build.VERSION.SDK_INT >= 23 && !canDrawOverlays()) {
-            startActivityForResult(
-                    new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())),
-                    REQUEST_CODE_WINDOW_OVERLAY_PERMISSION);
-        } else {
-            onSuccess();
-        }
+    String ensureNotificationChannel() {
+        return createNotification().getChannelId();
     }
 
-    private void onSuccess() {
+    @Override
+    void onSuccess() {
         if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES) {
             // On R+, we launch the floating view as a bubble
             Intent intent = createActivityIntent();
@@ -133,7 +113,8 @@ public abstract class OpenShortcutActivity extends Activity {
         finish();
     }
 
-    private void onFailure() {
+    @Override
+    void onFailure() {
         setResult(RESULT_CANCELED);
         finish();
     }
@@ -142,25 +123,6 @@ public abstract class OpenShortcutActivity extends Activity {
     public void finish() {
         super.finish();
         overridePendingTransition(R.anim.blank, R.anim.blank);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE_WINDOW_OVERLAY_PERMISSION) {
-            if (canDrawOverlays()) {
-                onSuccess();
-            } else {
-                onFailure();
-            }
-        } else if (requestCode == REQUEST_CODE_BUBBLES_PERMISSION) {
-            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && Bubbles.canDisplayBubbles(this, createNotification().getChannelId())) {
-                onSuccess();
-            } else {
-                onFailure();
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
     }
 
     @RequiresApi(26)
@@ -185,14 +147,5 @@ public abstract class OpenShortcutActivity extends Activity {
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
         drawable.draw(canvas);
         return bitmap;
-    }
-
-    private boolean canDrawOverlays() {
-        if (Build.VERSION.SDK_INT < 23) {
-            // Before 23, just adding the permission to the manifest was enough.
-            return true;
-        }
-
-        return Settings.canDrawOverlays(this);
     }
 }

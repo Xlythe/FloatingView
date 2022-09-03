@@ -1,6 +1,7 @@
 package com.xlythe.view.floating;
 
 import android.app.Activity;
+import android.app.NotificationChannel;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -9,6 +10,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 import androidx.annotation.DrawableRes;
+import androidx.annotation.RequiresApi;
 
 /**
  * Creates the shortcut icon
@@ -26,12 +28,16 @@ public abstract class CreateShortcutActivity extends Activity {
 
     public abstract Intent getOpenShortcutActivityIntent();
 
+    @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
+    protected abstract NotificationChannel createNotificationChannel();
+
     public void onCreate(Bundle state) {
         super.onCreate(state);
 
         if (Intent.ACTION_CREATE_SHORTCUT.equals(getIntent().getAction())) {
             // From M~Q, we use window overlays to draw the floating view. From R+ we use bubbles.
-            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this)) {
+            // Note that the notification channel must be created before we launch the Bubbles settings activity.
+            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this, createNotificationChannel().getId())) {
                 startActivityForResult(
                         new Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
                                 .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()),

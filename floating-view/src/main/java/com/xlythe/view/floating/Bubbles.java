@@ -16,11 +16,7 @@ class Bubbles {
   // Acceptable values are 29 (requires Dev Options), 30, and 999 (disabled).
   static final int MIN_SDK_BUBBLES = 30;
 
-  static boolean canDisplayBubbles(Context context) {
-    return canDisplayBubbles(context, "");
-  }
-
-    static boolean canDisplayBubbles(Context context, String notificationChannelId) {
+  static boolean canDisplayBubbles(Context context, String notificationChannelId) {
     if (Build.VERSION.SDK_INT < MIN_SDK_BUBBLES) {
       return false;
     }

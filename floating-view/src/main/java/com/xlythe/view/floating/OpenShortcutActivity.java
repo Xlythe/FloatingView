@@ -51,6 +51,7 @@ public abstract class OpenShortcutActivity extends Activity {
         super.onCreate(state);
 
         // From M~Q, we use window overlays to draw the floating view. From R+ we use bubbles.
+        // Note that the notification channel must be created before we launch the Bubbles settings activity.
         if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && !Bubbles.canDisplayBubbles(this, createNotification().getChannelId())) {
             startActivityForResult(
                     new Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS)
@@ -152,7 +153,7 @@ public abstract class OpenShortcutActivity extends Activity {
                 onFailure();
             }
         } else if (requestCode == REQUEST_CODE_BUBBLES_PERMISSION) {
-            if (Bubbles.canDisplayBubbles(this)) {
+            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && Bubbles.canDisplayBubbles(this, createNotification().getChannelId())) {
                 onSuccess();
             } else {
                 onFailure();

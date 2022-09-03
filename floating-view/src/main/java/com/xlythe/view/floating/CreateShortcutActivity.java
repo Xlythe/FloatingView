@@ -82,7 +82,7 @@ public abstract class CreateShortcutActivity extends Activity {
                 onFailure();
             }
         } else if (requestCode == REQUEST_CODE_BUBBLES_PERMISSION) {
-            if (Bubbles.canDisplayBubbles(this)) {
+            if (Build.VERSION.SDK_INT >= Bubbles.MIN_SDK_BUBBLES && Bubbles.canDisplayBubbles(this, createNotificationChannel().getId())) {
                 onSuccess();
             } else {
                 onFailure();

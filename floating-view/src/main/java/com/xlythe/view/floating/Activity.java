@@ -116,10 +116,10 @@ abstract class Activity extends android.app.Activity {
   private boolean canDrawOverlays() {
     if (Build.VERSION.SDK_INT < 23) {
       // Before 23, just adding the permission to the manifest was enough.
-      return hasPermission(Manifest.permission.SYSTEM_ALERT_WINDOW);
+      return true;
     }
 
-    return hasPermission(Manifest.permission.SYSTEM_ALERT_WINDOW) && Settings.canDrawOverlays(this);
+    return Settings.canDrawOverlays(this);
   }
 
   private boolean hasPermission(String permission) {

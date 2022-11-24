@@ -14,8 +14,6 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 33
-        versionCode 1
-        versionName project.property("bintray.libraryVersion")
     }
     buildTypes {
         release {
@@ -32,6 +30,7 @@ android {
             withJavadocJar()
         }
     }
+    namespace 'com.xlythe.view.floating'
 }
 
 afterEvaluate {

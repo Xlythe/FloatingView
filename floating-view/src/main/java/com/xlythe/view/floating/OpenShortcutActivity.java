@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ShortcutInfo;
@@ -18,7 +19,6 @@ import android.os.Build;
 import android.os.Handler;
 
 import androidx.annotation.RequiresApi;
-import androidx.core.util.Preconditions;
 
 import java.util.Collections;
 
@@ -129,7 +129,7 @@ public abstract class OpenShortcutActivity extends Activity {
     public Icon getActivityIcon(Intent intent) {
         PackageManager packageManager = getPackageManager();
         ResolveInfo resolveInfo = packageManager.resolveActivity(intent, 0);
-        Preconditions.checkNotNull(resolveInfo, "Failed to resolve " + intent);
+        assert resolveInfo != null;
         Drawable drawable = resolveInfo.loadIcon(packageManager);
         return Icon.createWithAdaptiveBitmap(toBitmap(drawable));
     }
@@ -137,8 +137,17 @@ public abstract class OpenShortcutActivity extends Activity {
     public String getActivityName(Intent intent) {
         PackageManager packageManager = getPackageManager();
         ResolveInfo resolveInfo = packageManager.resolveActivity(intent, 0);
-        Preconditions.checkNotNull(resolveInfo, "Failed to resolve " + intent);
-        return getString(resolveInfo.activityInfo.labelRes);
+        assert resolveInfo != null;
+        if (resolveInfo.activityInfo.labelRes != 0) {
+            return getString(resolveInfo.activityInfo.labelRes);
+        }
+
+        try {
+            ApplicationInfo applicationInfo = packageManager.getApplicationInfo(getPackageName(), 0);
+            return getString(applicationInfo.labelRes);
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public static Bitmap toBitmap(Drawable drawable) {

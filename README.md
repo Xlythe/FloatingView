@@ -6,7 +6,7 @@ Where to Download
 -----------------
 ```groovy
 dependencies {
-  implementation 'com.xlythe:floating-view:2.1.4'
+  implementation 'com.xlythe:floating-view:2.1.5'
 }
 ```
 

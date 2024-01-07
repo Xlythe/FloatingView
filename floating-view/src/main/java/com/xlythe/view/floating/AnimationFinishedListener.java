@@ -2,22 +2,24 @@ package com.xlythe.view.floating;
 
 import android.animation.Animator;
 
+import androidx.annotation.NonNull;
+
 public abstract class AnimationFinishedListener implements Animator.AnimatorListener {
     @Override
-    public void onAnimationCancel(Animator animation) {
+    public void onAnimationCancel(@NonNull Animator animation) {
         onAnimationFinished();
     }
 
     @Override
-    public void onAnimationRepeat(Animator animation) {
+    public void onAnimationRepeat(@NonNull Animator animation) {
     }
 
     @Override
-    public void onAnimationStart(Animator animation) {
+    public void onAnimationStart(@NonNull Animator animation) {
     }
 
     @Override
-    public void onAnimationEnd(Animator animation) {
+    public void onAnimationEnd(@NonNull Animator animation) {
         onAnimationFinished();
     }
 

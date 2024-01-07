@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.os.Build;
@@ -608,6 +607,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         mWiggle.y = Math.max(-1 * DELETE_BOX_HEIGHT / 8, (y - closeIconY) / 10);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     public void open() {
         if (mRootView.getVisibility() == View.GONE) {
             mRootView.setVisibility(View.VISIBLE);
@@ -637,7 +637,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                     close();
                 }
             };
-            getContext().registerReceiver(mHomeKeyReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+            ContextCompat.registerReceiver(getContext(), mHomeKeyReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS), ContextCompat.RECEIVER_EXPORTED);
         }
     }
 
@@ -717,7 +717,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
         }
     }
 
-    @SuppressLint("RtlHardcoded")
+    @SuppressLint({"RtlHardcoded", "ClickableViewAccessibility"})
     private void show() {
         if (DEBUG) Log.v(TAG, "show()");
         if (mView == null) {
@@ -813,7 +813,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
 
     private int getStatusBarHeight() {
         int result = 0;
-        @SuppressLint("DiscouragedApi") int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        @SuppressLint({"DiscouragedApi", "InternalInsetResource"}) int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
         if (resourceId > 0) {
             result = getResources().getDimensionPixelSize(resourceId);
         }

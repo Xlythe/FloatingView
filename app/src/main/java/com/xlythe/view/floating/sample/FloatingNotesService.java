@@ -1,5 +1,6 @@
 package com.xlythe.view.floating.sample;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -30,6 +31,7 @@ public class FloatingNotesService extends FloatingService {
         return LayoutInflater.from(getContext()).inflate(R.layout.floating_notes, parent, false);
     }
 
+    @SuppressLint("LaunchActivityFromNotification")
     @NonNull
     @Override
     protected Notification createNotification() {

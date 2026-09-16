@@ -7,7 +7,8 @@ import androidx.annotation.NonNull;
 public abstract class AnimationFinishedListener implements Animator.AnimatorListener {
     @Override
     public void onAnimationCancel(@NonNull Animator animation) {
-        onAnimationFinished();
+        // Nothing here on purpose. A cancelled animation is delivered as a cancel followed by an
+        // end, so answering both ran the body twice every time an animation was interrupted.
     }
 
     @Override

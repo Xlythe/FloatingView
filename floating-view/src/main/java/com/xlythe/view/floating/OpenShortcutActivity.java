@@ -17,6 +17,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.RequiresApi;
 
@@ -97,7 +98,13 @@ public abstract class OpenShortcutActivity extends Activity {
             // Clean up the shortcuts once we're done. Although it works if we immediately remove the
             // shortcut, the Bubble icon is loaded lazily and gets corrupted if we do so. Adding a short
             // delay fixes this problem.
-            new Handler().postDelayed(() -> shortcutManager.removeDynamicShortcuts(Collections.singletonList(SHORTCUT_ID)), 5000);
+            // The manager comes from the application rather than from here, because this activity has
+            // finished by the time the clean up runs and there is no reason to keep it alive for it.
+            ShortcutManager applicationShortcutManager =
+                    getApplicationContext().getSystemService(ShortcutManager.class);
+            new Handler(Looper.getMainLooper()).postDelayed(
+                    () -> applicationShortcutManager.removeDynamicShortcuts(Collections.singletonList(SHORTCUT_ID)),
+                    5000);
         } else {
             // On pre-R, we launch the floating view as a service
             Intent intent = createServiceIntent();

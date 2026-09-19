@@ -1,3 +1,7 @@
+plugins {
+    id 'com.gradleup.nmcp' version '1.5.0'
+}
+
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
@@ -83,17 +87,19 @@ afterEvaluate {
                 }
             }
         }
-        repositories {
-            maven {
-                name = "MavenCentral"
-                url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-                credentials {
-                    username = localProperties.getProperty("bintray.username")
-                    password = localProperties.getProperty("bintray.password")
-                }
-            }
-        }
     }
+}
+
+nmcp {
+    publishAllPublicationsToCentralPortal {
+        username = localProperties.getProperty("bintray.username")
+        password = localProperties.getProperty("bintray.password")
+        publishingType = "AUTOMATIC"
+    }
+}
+
+tasks.named("publish") {
+    dependsOn("nmcpPublishAllPublicationsToCentralPortal")
 }
 
 signing {
@@ -110,7 +116,7 @@ signing {
 // Only sign when publishing to Maven Central, so publishToMavenLocal works without signing keys.
 gradle.taskGraph.whenReady { graph ->
     boolean remote = graph.hasTask("${project.path}:publish") ||
-            graph.hasTask("${project.path}:publishReleasePublicationToMavenCentralRepository")
+            graph.hasTask("${project.path}:nmcpPublishAllPublicationsToCentralPortal")
     tasks.withType(Sign).configureEach { enabled = remote }
 }
 

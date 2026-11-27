@@ -227,6 +227,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     @Override
     public void onDestroy() {
         mIsDestroyed = true;
+        unregisterHomeKeyReceiver();
         if (mRootView != null) {
             ((WindowManager) getSystemService(WINDOW_SERVICE)).removeView(mRootView);
             mRootView = null;
@@ -244,6 +245,13 @@ public abstract class FloatingView extends Service implements OnTouchListener {
             mBroadcastReceiver = null;
         }
         super.onDestroy();
+    }
+
+    private void unregisterHomeKeyReceiver() {
+        if (mHomeKeyReceiver != null) {
+            getContext().unregisterReceiver(mHomeKeyReceiver);
+            mHomeKeyReceiver = null;
+        }
     }
 
     @Override
@@ -695,11 +703,11 @@ public abstract class FloatingView extends Service implements OnTouchListener {
     }
 
     public void close(boolean returnToOrigin, boolean destroyView) {
+        if (mRootView == null || (returnToOrigin && mIsAnimationLocked)) return;
         mRootView.setOnTouchListener(null);
         if (mIsViewOpen) {
             mIsViewOpen = false;
             if (returnToOrigin) {
-                if (mIsAnimationLocked) return;
                 mAnimationTask = new AnimationTask(mCurrentPosX, mCurrentPosY);
                 mAnimationTask.setAnimationFinishedListener(new AnimationFinishedListener() {
                     @Override
@@ -710,10 +718,7 @@ public abstract class FloatingView extends Service implements OnTouchListener {
                 mAnimationTask.run();
             }
             hide(destroyView);
-            if (mHomeKeyReceiver != null) {
-                getContext().unregisterReceiver(mHomeKeyReceiver);
-                mHomeKeyReceiver = null;
-            }
+            unregisterHomeKeyReceiver();
         }
     }
 

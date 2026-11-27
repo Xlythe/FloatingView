@@ -6,7 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
+import android.graphics.Rect;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ShortcutInfo;
@@ -16,12 +16,9 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 
 import androidx.annotation.RequiresApi;
 
-import java.util.Collections;
 
 /**
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
@@ -54,12 +51,10 @@ public abstract class OpenShortcutActivity extends Activity {
             Icon icon = getActivityIcon(intent);
             String name = getActivityName(intent);
 
-            @SuppressLint("InlinedApi") PendingIntent bubbleIntent =
-                    PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE);
+            String shortcutId = SHORTCUT_ID + "." + getComponentName().flattenToShortString();
+            if (intent.getAction() == null) intent.setAction(ACTION_OPEN);
             Notification.BubbleMetadata bubbleData =
-                    new Notification.BubbleMetadata.Builder()
-                            .setIntent(bubbleIntent)
-                            .setIcon(icon)
+                    new Notification.BubbleMetadata.Builder(shortcutId)
                             .setDesiredHeight(600)
                             .setAutoExpandBubble(true)
                             .setSuppressNotification(true)
@@ -71,40 +66,30 @@ public abstract class OpenShortcutActivity extends Activity {
 
             // Bubbles require a long lived shortcut on R+ (see https://developer.android.com/guide/topics/ui/conversations#bubbles)
             ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
-            ShortcutInfo shortcutInfo = new ShortcutInfo.Builder(this, SHORTCUT_ID)
+            ShortcutInfo shortcutInfo = new ShortcutInfo.Builder(this, shortcutId)
                     .setIcon(icon)
                     .setShortLabel(name)
                     .setPerson(person)
                     .setLongLived(true)
-                    .setIntent(new Intent(ACTION_OPEN).setComponent(getComponentName()))
+                    .setIntent(intent)
                     .build();
-            shortcutManager.addDynamicShortcuts(Collections.singletonList(shortcutInfo));
+            shortcutManager.pushDynamicShortcut(shortcutInfo);
 
             // Bubbles are launched by showing a notification.
             Notification notification = createNotification();
             @SuppressLint("InlinedApi") Notification.Builder builder =
                     new Notification.Builder(this, notification.getChannelId())
-                            .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE))
+                            .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(ACTION_OPEN).setComponent(getComponentName()), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                             .setContentTitle(notification.extras.getCharSequence(Notification.EXTRA_TITLE))
                             .setContentText(notification.extras.getCharSequence(Notification.EXTRA_TEXT))
                             .setSmallIcon(notification.getSmallIcon())
                             .setBubbleMetadata(bubbleData)
                             .addPerson(person)
-                            .setShortcutId(SHORTCUT_ID)
+                            .setShortcutId(shortcutId)
                             .setStyle(style);
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.notify(0, builder.build());
+            notificationManager.notify(shortcutId, 0, builder.build());
 
-            // Clean up the shortcuts once we're done. Although it works if we immediately remove the
-            // shortcut, the Bubble icon is loaded lazily and gets corrupted if we do so. Adding a short
-            // delay fixes this problem.
-            // The manager comes from the application rather than from here, because this activity has
-            // finished by the time the clean up runs and there is no reason to keep it alive for it.
-            ShortcutManager applicationShortcutManager =
-                    getApplicationContext().getSystemService(ShortcutManager.class);
-            new Handler(Looper.getMainLooper()).postDelayed(
-                    () -> applicationShortcutManager.removeDynamicShortcuts(Collections.singletonList(SHORTCUT_ID)),
-                    5000);
         } else {
             // On pre-R, we launch the floating view as a service
             Intent intent = createServiceIntent();
@@ -136,32 +121,31 @@ public abstract class OpenShortcutActivity extends Activity {
     public Icon getActivityIcon(Intent intent) {
         PackageManager packageManager = getPackageManager();
         ResolveInfo resolveInfo = packageManager.resolveActivity(intent, 0);
-        assert resolveInfo != null;
-        Drawable drawable = resolveInfo.loadIcon(packageManager);
+        Drawable drawable = resolveInfo == null ? getApplicationInfo().loadIcon(packageManager)
+                : resolveInfo.loadIcon(packageManager);
         return Icon.createWithAdaptiveBitmap(toBitmap(drawable));
     }
 
     public String getActivityName(Intent intent) {
         PackageManager packageManager = getPackageManager();
         ResolveInfo resolveInfo = packageManager.resolveActivity(intent, 0);
-        assert resolveInfo != null;
-        if (resolveInfo.activityInfo.labelRes != 0) {
-            return getString(resolveInfo.activityInfo.labelRes);
-        }
-
-        try {
-            ApplicationInfo applicationInfo = packageManager.getApplicationInfo(getPackageName(), 0);
-            return getString(applicationInfo.labelRes);
-        } catch (PackageManager.NameNotFoundException e) {
-            throw new IllegalStateException(e);
-        }
+        return (resolveInfo == null ? getApplicationInfo().loadLabel(packageManager)
+                : resolveInfo.loadLabel(packageManager)).toString();
     }
 
     public static Bitmap toBitmap(Drawable drawable) {
-        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        drawable.draw(canvas);
+        Rect bounds = drawable.copyBounds();
+        int width = drawable.getIntrinsicWidth();
+        int height = drawable.getIntrinsicHeight();
+        if (width <= 0) width = Math.max(1, bounds.width());
+        if (height <= 0) height = Math.max(1, bounds.height());
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        try {
+            drawable.setBounds(0, 0, width, height);
+            drawable.draw(new Canvas(bitmap));
+        } finally {
+            drawable.setBounds(bounds);
+        }
         return bitmap;
     }
 }

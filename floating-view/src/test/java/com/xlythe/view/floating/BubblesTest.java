@@ -96,6 +96,17 @@ public class BubblesTest {
     }
 
     @Test
+    @Config(minSdk = 29, maxSdk = 29)
+    public void android10ReadsTheDeveloperOptionsSwitchFromSecure() {
+        Settings.Global.putInt(context.getContentResolver(), "notification_bubbles", 1);
+        Settings.Secure.putInt(context.getContentResolver(), "notification_bubbles", 0);
+        assertFalse(Bubbles.areBubblesEnabled(context, manager));
+        Settings.Global.putInt(context.getContentResolver(), "notification_bubbles", 0);
+        Settings.Secure.putInt(context.getContentResolver(), "notification_bubbles", 1);
+        assertTrue(Bubbles.areBubblesEnabled(context, manager));
+    }
+
+    @Test
     @Config(minSdk = 30, maxSdk = 30)
     public void android11ChecksBothTheGlobalSwitchAndTheAppChoice() {
         Settings.Global.putInt(context.getContentResolver(), "notification_bubbles", 0);

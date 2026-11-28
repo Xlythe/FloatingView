@@ -12,3 +12,4 @@ gradlew
 *.iml
 local.properties
 *.apk
+/gradle/wrapper/

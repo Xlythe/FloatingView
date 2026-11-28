@@ -20,6 +20,12 @@ The following permissions are required in your AndroidManfiest.xml
 <uses-permission android:name="android.permission.VIBRATE" android:maxSdkVersion="29" />
 ```
 
+Bubble settings
+-----------------
+Android 6–10 use the overlay permission. Android 11 uses notification bubbles and requires “All conversations can bubble” because its public API only reports that app-wide choice. On Android 12 and later, “Selected conversations” also works when the user has enabled this particular floating window. Each opener activity has its own conversation shortcut.
+
+A newly created channel can report `canBubble() == false` even when “All conversations” allows it. Android reserves per-conversation choices for the user. The public API also reports false for an explicitly disabled channel, so Android makes the final decision when the notification is posted. [Android 11 channel creation](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-11.0.0_r1/services/core/java/com/android/server/notification/PreferencesHelper.java#897) · [Android bubble eligibility](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-16.0.0_r1/services/core/java/com/android/server/notification/BubbleExtractor.java#108)
+
 FloatingView
 -----------------
 Extend FloatingViewService (<R) and and FloatingViewActivity (R+) to implement the floating window.
@@ -73,11 +79,10 @@ public class OpenActivity extends OpenShortcutActivity {
         return new Intent(this, FloatingNotesActivity.class);
     }
 
-    @RequiresApi(29)
+    @RequiresApi(30)
     @Override
     protected Notification createNotification() {
         NotificationChannel notificationChannel = new NotificationChannel(FloatingNotesService.CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_MIN);
-        notificationChannel.setAllowBubbles(true);
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.createNotificationChannel(notificationChannel);

@@ -2,6 +2,7 @@ package com.xlythe.view.floating;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -129,7 +130,7 @@ abstract class Activity extends android.app.Activity {
       return false;
     }
 
-    return Bubbles.canDisplayBubbles(this, ensureNotificationChannel());
+    return Bubbles.canDisplayBubbles(this, ensureNotificationChannel(), getShortcutOpener());
   }
 
   @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
@@ -198,6 +199,10 @@ abstract class Activity extends android.app.Activity {
 
   @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
   abstract String ensureNotificationChannel();
+
+  ComponentName getShortcutOpener() {
+    return getComponentName();
+  }
 
   abstract void onSuccess();
 

@@ -30,11 +30,10 @@ public class CreateActivity extends CreateShortcutActivity {
         return new Intent(this, OpenActivity.class);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.Q)
+    @RequiresApi(api = Build.VERSION_CODES.R)
     @Override
     protected NotificationChannel createNotificationChannel() {
         NotificationChannel notificationChannel = new NotificationChannel(FloatingNotesService.CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_MIN);
-        notificationChannel.setAllowBubbles(true);
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.createNotificationChannel(notificationChannel);

@@ -24,9 +24,6 @@ import androidx.annotation.RequiresApi;
  * When the shortcut icon is pressed, use this Activity to launch the overlay Service
  */
 public abstract class OpenShortcutActivity extends Activity {
-    // A fake ID used to create a shortcut. This is required in order to display a Bubble.
-    private static final String SHORTCUT_ID = "floating.shortcutId";
-
     public static final String ACTION_OPEN = FloatingView.ACTION_OPEN;
 
     protected abstract Intent createServiceIntent();
@@ -51,7 +48,7 @@ public abstract class OpenShortcutActivity extends Activity {
             Icon icon = getActivityIcon(intent);
             String name = getActivityName(intent);
 
-            String shortcutId = SHORTCUT_ID + "." + getComponentName().flattenToShortString();
+            String shortcutId = Bubbles.shortcutId(getShortcutOpener());
             if (intent.getAction() == null) intent.setAction(ACTION_OPEN);
             Notification.BubbleMetadata bubbleData =
                     new Notification.BubbleMetadata.Builder(shortcutId)

@@ -3,7 +3,7 @@ package com.xlythe.view.floating;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-import android.app.Activity;
+import android.Manifest;
 import android.content.pm.PackageManager;
 
 import org.junit.Test;
@@ -19,10 +19,10 @@ import org.robolectric.shadows.ShadowSettings;
  * test can say whether it has been granted.
  */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 29)
+@Config(maxSdk = 29)
 public class ActivityTest {
     /** Counts what the library tells it, so a second telling is visible. */
-    public static class Subject extends com.xlythe.view.floating.Activity {
+    public static class Subject extends Activity {
         int succeeded;
         int failed;
 
@@ -125,7 +125,7 @@ public class ActivityTest {
      * the first element of turned into a crash on the very first tap.
      */
     @Test
-    @Config(sdk = 33)
+    @Config(minSdk = 33, maxSdk = Config.NEWEST_SDK)
     public void anInterruptedPermissionRequest_doesNotCrash() {
         Subject subject = Robolectric.buildActivity(Subject.class).setup().get();
 
@@ -135,12 +135,12 @@ public class ActivityTest {
     }
 
     @Test
-    @Config(sdk = 33)
+    @Config(minSdk = 33, maxSdk = Config.NEWEST_SDK)
     public void aRefusedNotificationPermission_givesUp() {
         Subject subject = Robolectric.buildActivity(Subject.class).setup().get();
 
         subject.onRequestPermissionsResult(10003,
-                new String[] {android.Manifest.permission.POST_NOTIFICATIONS},
+                new String[] {Manifest.permission.POST_NOTIFICATIONS},
                 new int[] {PackageManager.PERMISSION_DENIED});
 
         assertEquals(1, subject.failed);

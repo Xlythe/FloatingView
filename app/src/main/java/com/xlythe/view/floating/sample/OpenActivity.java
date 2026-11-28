@@ -24,11 +24,10 @@ public class OpenActivity extends OpenShortcutActivity {
         return new Intent(this, FloatingNotesActivity.class);
     }
 
-    @RequiresApi(29)
+    @RequiresApi(30)
     @Override
     protected Notification createNotification() {
         NotificationChannel notificationChannel = new NotificationChannel(FloatingNotesService.CHANNEL_ID, getString(R.string.app_name), NotificationManager.IMPORTANCE_MIN);
-        notificationChannel.setAllowBubbles(true);
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.createNotificationChannel(notificationChannel);

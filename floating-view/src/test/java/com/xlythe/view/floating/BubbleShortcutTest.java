@@ -1,6 +1,8 @@
 package com.xlythe.view.floating;
 
+import android.R;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
@@ -16,10 +18,12 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 37)
+@Config(minSdk = 30)
 public class BubbleShortcutTest {
     public static class Opener extends OpenShortcutActivity {
         @Override protected Intent createActivityIntent() { return new Intent(this, FloatingActivity.class); }
@@ -27,8 +31,21 @@ public class BubbleShortcutTest {
         @Override protected Notification createNotification() {
             getSystemService(NotificationManager.class).createNotificationChannel(
                     new NotificationChannel("windows", "Windows", NotificationManager.IMPORTANCE_DEFAULT));
-            return new Notification.Builder(this, "windows").setSmallIcon(android.R.drawable.ic_menu_view).build();
+            return new Notification.Builder(this, "windows").setSmallIcon(R.drawable.ic_menu_view).build();
         }
+    }
+
+    public static class Creator extends CreateShortcutActivity {
+        @Override public int getShortcutIcon() { return R.drawable.ic_menu_view; }
+        @Override public CharSequence getShortcutName() { return "Window"; }
+        @Override public Intent getOpenShortcutActivityIntent() { return new Intent(this, Opener.class); }
+        @Override protected NotificationChannel createNotificationChannel() { throw new AssertionError(); }
+    }
+
+    @Test public void shortcutCreatorChecksTheSameConversationAsTheOpener() {
+        Creator creator = Robolectric.buildActivity(Creator.class).get();
+        Opener opener = Robolectric.buildActivity(Opener.class).get();
+        assertEquals(opener.getShortcutOpener(), creator.getShortcutOpener());
     }
 
     @Test public void bubbleShortcutOpensContentAndSurvivesTheOpener() {
@@ -38,7 +55,7 @@ public class BubbleShortcutTest {
         Notification notification = opener.getSystemService(NotificationManager.class).getActiveNotifications()[0].getNotification();
         assertEquals(shortcut.getId(), notification.getBubbleMetadata().getShortcutId());
         assertEquals(FloatingActivity.class.getName(), shortcut.getIntent().getComponent().getClassName());
-        assertTrue(notification.contentIntent.isImmutable());
+        assertTrue((shadowOf(notification.contentIntent).getFlags() & PendingIntent.FLAG_IMMUTABLE) != 0);
         assertTrue(opener.isFinishing());
     }
 

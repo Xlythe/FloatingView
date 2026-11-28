@@ -1,6 +1,7 @@
 package com.xlythe.view.floating;
 
 import android.app.NotificationChannel;
+import android.content.ComponentName;
 import android.content.Intent;
 
 import androidx.annotation.DrawableRes;
@@ -20,6 +21,11 @@ public abstract class CreateShortcutActivity extends Activity {
 
     @RequiresApi(Bubbles.MIN_SDK_BUBBLES)
     protected abstract NotificationChannel createNotificationChannel();
+
+    @Override
+    ComponentName getShortcutOpener() {
+        return getOpenShortcutActivityIntent().resolveActivity(getPackageManager());
+    }
 
     @Override
     void onSuccess() {

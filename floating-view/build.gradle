@@ -16,6 +16,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
+    enableKotlin = false
     compileSdk 37
 
     defaultConfig {
@@ -122,14 +123,14 @@ gradle.taskGraph.whenReady { graph ->
 
 dependencies {
     api fileTree(include: ['*.jar'], dir: 'libs')
-    api 'androidx.appcompat:appcompat:1.8.0'
-    testImplementation 'org.robolectric:robolectric:4.18.1'
-    testImplementation 'junit:junit:4.13.2'
+    api 'androidx.appcompat:appcompat:[1.8.0,)'
+    testImplementation 'org.robolectric:robolectric:[4.18.1,)'
+    testImplementation 'junit:junit:[4.13.2,)'
     constraints {
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.0") {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:[1.8.0,)") {
             because("kotlin-stdlib-jdk7 is now a part of kotlin-stdlib")
         }
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:[1.8.0,)") {
             because("kotlin-stdlib-jdk8 is now a part of kotlin-stdlib")
         }
     }
